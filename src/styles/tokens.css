@@ -1,15 +1,99 @@
 @import "tailwindcss";
 
+/* Design notes are prose, not class sources; keep them out of the utility scan. */
+@source not "../../docs/**";
+
+/*
+ * Miro design tokens.
+ *
+ * Traceability: every block names the apple-design section it implements.
+ * Motion itself lives in src/motion/spring.ts, not in CSS transitions.
+ */
+
 @theme {
-  --font-sans: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI",
+  /* §15 — default to the platform font; Windows already ships optical sizing. */
+  --font-sans: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI",
     system-ui, sans-serif;
   --font-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
 }
 
 :root {
   color-scheme: dark;
-  --miro-desk: #0a0d10;
-  --miro-desk-2: #11161b;
+
+  /* One surface, one foreground, one accent. See DESIGN.md. */
+  --ink: 9 10 12;
+  --paper: 244 242 236;
+  --accent: 199 242 132;
+  --shade: 0 0 0;
+  --danger: 255 143 133;
+
+  --surface: rgb(var(--ink) / 0.94);
+  --surface-raised: rgb(var(--paper) / 0.06);
+  --surface-sunken: rgb(var(--shade) / 0.2);
+  --hairline: rgb(var(--paper) / 0.07);
+  --hairline-strong: rgb(var(--paper) / 0.13);
+
+  --text-primary: rgb(var(--paper) / 0.96);
+  --text-secondary: rgb(var(--paper) / 0.7);
+  --text-tertiary: rgb(var(--paper) / 0.48);
+  --text-on-light: rgb(12 13 15);
+
+  /* 4/8px grid. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --clock-gutter: 44px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Four sizes, no fifth meta step. Meta uses Label. */
+  --type-display-size: 19px;
+  --type-display-leading: 1.05;
+  --type-display-tracking: -0.02em;
+  --type-display-weight: 600;
+
+  --type-title-size: 15px;
+  --type-title-leading: 1.2;
+  --type-title-tracking: -0.015em;
+  --type-title-weight: 600;
+
+  --type-body-size: 12px;
+  --type-body-leading: 1.35;
+  --type-body-tracking: 0;
+  --type-body-weight: 450;
+
+  --type-label-size: 10px;
+  --type-label-leading: 1.2;
+  --type-label-tracking: 0.01em;
+  --type-label-weight: 560;
+
+  /* §14 — reduced transparency must still leave a legible surface. */
+  --material-blur: 14px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --ink: 250 249 246;
+  --paper: 22 24 28;
+  --accent: 98 148 48;
+  --shade: 22 24 28;
+
+  --surface: rgb(var(--ink) / 0.96);
+  --surface-raised: rgb(var(--paper) / 0.05);
+  --surface-sunken: rgb(var(--shade) / 0.08);
+  --hairline: rgb(var(--paper) / 0.08);
+  --hairline-strong: rgb(var(--paper) / 0.14);
+
+  --text-primary: rgb(var(--paper) / 0.94);
+  --text-secondary: rgb(var(--paper) / 0.66);
+  --text-tertiary: rgb(var(--paper) / 0.46);
+  --text-on-light: rgb(250 249 246);
 }
 
 * {
@@ -31,8 +115,10 @@ body {
 
 body {
   font-family: var(--font-sans);
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-synthesis-weight: none;
   user-select: none;
   cursor: default;
 }
@@ -40,20 +126,56 @@ body {
 button,
 input {
   font: inherit;
+  color: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
 }
 
 :focus-visible {
-  outline: 2px solid var(--miro-focus, #c9f76f);
+  outline: 2px solid rgb(var(--accent) / 0.9);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-  }
+/* §15 — weight carries emphasis without spending space. */
+.t-title {
+  font-size: var(--type-title-size);
+  line-height: var(--type-title-leading);
+  letter-spacing: var(--type-title-tracking);
+  font-weight: var(--type-title-weight);
+}
+
+.t-body {
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-leading);
+  letter-spacing: var(--type-body-tracking);
+  font-weight: var(--type-body-weight);
+}
+
+.t-label {
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-leading);
+  letter-spacing: var(--type-label-tracking);
+  font-weight: var(--type-label-weight);
+}
+
+/* Meta is not a fifth size: it borrows the Label step. */
+.t-meta {
+  font-size: var(--type-label-size);
+  line-height: var(--type-label-leading);
+  letter-spacing: var(--type-label-tracking);
+  font-weight: var(--type-label-weight);
+}
+
+.t-display {
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-leading);
+  letter-spacing: var(--type-display-tracking);
+  font-weight: var(--type-display-weight);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
 }

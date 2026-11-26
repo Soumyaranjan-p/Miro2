@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Miro — Pass 1 visual review (impeccable)</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", system-ui, sans-serif; }
+    body { margin: 0; padding: 32px; background: #111216; color: #f4f2ec; }
+    h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: -.02em; }
+    h2 { margin: 32px 0 12px; font-size: 15px; color: #b9c78f; letter-spacing: .01em; }
+    p { margin: 0 0 8px; color: #a9a9a6; font-size: 13px; line-height: 1.5; }
+    .note { max-width: 780px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 20px; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
+    figure { margin: 0; padding: 12px; background: #1b1c21; border: 1px solid #2b2c33; border-radius: 12px; }
+    figure.wide { grid-column: 1 / -1; }
+    figcaption { margin-bottom: 8px; font-size: 11px; color: #a9a9a6; letter-spacing: .04em; text-transform: uppercase; }
+    img { display: block; width: 100%; height: auto; image-rendering: auto; }
+    img.pill { width: 152px; }
+    .missing { display: grid; place-items: center; width: 100%; aspect-ratio: 420 / 150; border: 1px dashed #4a4b53; border-radius: 12px; color: #777; font-size: 12px; }
+    code { color: #c7ef84; }
+  </style>
+</head>
+<body>
+  <h1>Pass 1 — impeccable</h1>
+  <p class="note">Layout, hierarchy, typography, colour and spacing only. No animation, materials, shadows or Rust/window changes. Captures are the real notch geometry — <code>152×30</code> collapsed/hover and <code>420×150</code> expanded — at 1.5× device scale.</p>
+
+  <h2>Five worst problems seen in the current build, and what changed</h2>
+  <p class="note">1. Content sat as a flat left slab with a dead right half. It is now a two-zone composition with a deliberate clock/action gutter.<br>
+  2. Type collapsed into near-equal 10–13px steps. The scale is now 19/15/12/10, with weight doing the rest.<br>
+  3. Water had a stranded bottle and an amount that collided with the edge. Amount, bottle and drink action now read as one related group.<br>
+  4. To-do's clock and count collided with content; rows were cramped. The clock has its own gutter and the four rows plus count fit cleanly.<br>
+  5. Tabs were a dense six-item strip and light mode was a broken inversion. Seven tabs fit at 10px, and light is a first-class token set. Settings was missing entirely and is now a real page.</p>
+
+  <h2>Before → after (dark music / dark to-do / light music)</h2>
+  <div class="grid">
+    <figure>
+      <figcaption>Music — before</figcaption>
+      <img src="before/dark_expanded_music.png" alt="Music page before Pass 1" />
+    </figure>
+    <figure>
+      <figcaption>Music — after</figcaption>
+      <img src="final/dark_expanded_music.png" alt="Music page after Pass 1" />
+    </figure>
+    <figure>
+      <figcaption>To-do — before</figcaption>
+      <img src="before/dark_expanded_todo.png" alt="To-do page before Pass 1" />
+    </figure>
+    <figure>
+      <figcaption>To-do — after</figcaption>
+      <img src="final/dark_expanded_todo.png" alt="To-do page after Pass 1" />
+    </figure>
+    <figure>
+      <figcaption>Music (light) — before</figcaption>
+      <img src="before/light_expanded_music.png" alt="Light music page simulated before Pass 1" />
+    </figure>
+    <figure>
+      <figcaption>Music (light) — after</figcaption>
+      <img src="final/light_expanded_music.png" alt="Light music page after Pass 1" />
+    </figure>
+    <figure>
+      <figcaption>Settings — before</figcaption>
+      <div class="missing">no settings page existed</div>
+    </figure>
+    <figure>
+      <figcaption>Settings — after</figcaption>
+      <img src="final/dark_expanded_settings.png" alt="Settings page after Pass 1" />
+    </figure>
+  </div>
+
+  <h2>Dark — all states</h2>
+  <div class="grid">
+    <figure><figcaption>Collapsed</figcaption><img class="pill" src="final/dark_collapsed.png" alt="Dark collapsed" /></figure>
+    <figure><figcaption>Hover</figcaption><img class="pill" src="final/dark_hover.png" alt="Dark hover" /></figure>
+    <figure><figcaption>Music</figcaption><img src="final/dark_expanded_music.png" alt="Dark music" /></figure>
+    <figure><figcaption>Focus</figcaption><img src="final/dark_expanded_focus.png" alt="Dark focus" /></figure>
+    <figure><figcaption>Shelf</figcaption><img src="final/dark_expanded_shelf.png" alt="Dark shelf" /></figure>
+    <figure><figcaption>Water</figcaption><img src="final/dark_expanded_water.png" alt="Dark water" /></figure>
+    <figure><figcaption>To-do</figcaption><img src="final/dark_expanded_todo.png" alt="Dark to-do" /></figure>
+    <figure><figcaption>Settings</figcaption><img src="final/dark_expanded_settings.png" alt="Dark settings" /></figure>
+  </div>
+
+  <h2>Light — all states</h2>
+  <div class="grid">
+    <figure><figcaption>Collapsed</figcaption><img class="pill" src="final/light_collapsed.png" alt="Light collapsed" /></figure>
+    <figure><figcaption>Hover</figcaption><img class="pill" src="final/light_hover.png" alt="Light hover" /></figure>
+    <figure><figcaption>Music</figcaption><img src="final/light_expanded_music.png" alt="Light music" /></figure>
+    <figure><figcaption>Focus</figcaption><img src="final/light_expanded_focus.png" alt="Light focus" /></figure>
+    <figure><figcaption>Shelf</figcaption><img src="final/light_expanded_shelf.png" alt="Light shelf" /></figure>
+    <figure><figcaption>Water</figcaption><img src="final/light_expanded_water.png" alt="Light water" /></figure>
+    <figure><figcaption>To-do</figcaption><img src="final/light_expanded_todo.png" alt="Light to-do" /></figure>
+    <figure><figcaption>Settings</figcaption><img src="final/light_expanded_settings.png" alt="Light settings" /></figure>
+  </div>
+</body>
+</html>

@@ -8,7 +8,15 @@ export function createMockSnapshot(): AppSnapshot {
     notch: {
       phase: "collapsed",
       page: "music",
-      pagesOrder: ["music", "lyrics", "focus", "water", "shelf", "todo"],
+      pagesOrder: [
+        "music",
+        "lyrics",
+        "focus",
+        "water",
+        "shelf",
+        "todo",
+        "settings",
+      ],
       pagesHidden: [],
       minimal: false,
       showClockDate: true,

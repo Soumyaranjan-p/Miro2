@@ -1,0 +1,999 @@
+/*
+ * Miro notch — visual + motion system.
+ * Section references point at .agents/skills/apple-design/SKILL.md.
+ *
+ * Shape is driven by one spring value, --t (0 collapsed → 1 expanded), written
+ * in src/motion. Everything below derives from it, so width, height, radius,
+ * content opacity and sheen stay in lockstep and stay interruptible.
+ */
+
+.notch-root {
+  --t: 0;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+}
+
+/* ---------------------------------------------------------------- shell */
+
+.notch-shell {
+  position: relative;
+  width: calc(152px + 268px * var(--t));
+  height: calc(30px + 120px * var(--t));
+  border-radius: 0 0 calc(15px + 7px * var(--t)) calc(15px + 7px * var(--t));
+  /* §12 — the window is only as large as the notch, so depth comes from
+     layered material and rim light, not from a shadow that would be clipped. */
+  background:
+    linear-gradient(
+      180deg,
+      rgb(var(--paper) / 0.065) 0%,
+      rgb(var(--paper) / 0.015) 42%,
+      rgb(var(--shade) / 0.16) 100%
+    ),
+    rgb(var(--ink) / 0.96);
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--paper) / 0.07),
+    inset 0 -1px 0 rgb(var(--paper) / 0.1),
+    inset 0 1px 0 rgb(0 0 0 / 0.45);
+  overflow: hidden;
+  transform-origin: top center;
+  isolation: isolate;
+}
+
+.notch-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.06) 0%,
+    rgb(255 255 255 / 0.015) 55%,
+    transparent 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease-out;
+}
+
+/* §1 — feedback the moment the pointer arrives, before expansion starts. */
+.notch-root[data-phase="hover"] .notch-sheen {
+  opacity: 1;
+}
+
+.notch-root[data-phase="expanded"] .notch-sheen {
+  opacity: 0.55;
+}
+
+/* ------------------------------------------------------------ collapsed */
+
+.notch-collapsed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  opacity: max(0, calc(1 - var(--t) * 3));
+  transform: translateY(calc(var(--t) * -3px));
+  pointer-events: none;
+}
+
+.collapsed-mark {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 5px;
+  background: rgb(var(--paper) / 0.07);
+  box-shadow: inset 0 0 0 1px rgb(var(--paper) / 0.06);
+}
+
+.collapsed-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  transition:
+    background-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.collapsed-mark[data-playing="true"] .collapsed-dot {
+  background: rgb(var(--accent));
+  box-shadow: 0 0 8px rgb(var(--accent) / 0.45);
+}
+
+/* §15 — tracking and leading come from the size-specific ramp, never one
+   hardcoded value shared by different sizes. */
+.collapsed-brand {
+  font-size: var(--type-title-size);
+  line-height: var(--type-title-leading);
+  letter-spacing: var(--type-title-tracking);
+  font-weight: var(--type-title-weight);
+  color: var(--text-primary);
+}
+
+.collapsed-clock {
+  margin-left: auto;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-leading);
+  letter-spacing: var(--type-body-tracking);
+  font-weight: var(--type-body-weight);
+  color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------- expanded */
+
+.notch-expanded {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  /* §16 — one content row + tabs. The redundant header row is gone, so the
+     page gets back the ~20px it used to spend on repeated information. */
+  grid-template-rows: minmax(0, 1fr) 22px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  /* §12 — materialize: the content arrives with the surface instead of
+     popping in after the window has already finished growing. */
+  opacity: clamp(0, calc((var(--t) - 0.45) * 3.2), 1);
+  transform: translateY(calc((1 - var(--t)) * 5px))
+    scale(calc(0.988 + 0.012 * var(--t)));
+  transform-origin: top center;
+  pointer-events: none;
+}
+
+.notch-root[data-phase="expanded"] .notch-expanded {
+  pointer-events: auto;
+}
+
+/* §12 — the clock is floating meta chrome, not another structural row. It
+   never takes a gesture away from the content underneath it. */
+.notch-clock {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-3);
+  z-index: 2;
+  pointer-events: none;
+  color: var(--text-tertiary);
+}
+
+.notch-content {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  /* The clock owns a quiet right-hand gutter; content never sits under it. */
+  padding-right: var(--clock-gutter);
+}
+
+/* --------------------------------------------------------------- pages */
+
+.page {
+  height: 100%;
+  min-height: 0;
+}
+
+.page-stage {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  /* §2 — claim horizontal gestures for the pager, leave vertical OS gestures
+     alone. */
+  touch-action: pan-y;
+}
+
+.page-slot {
+  --d: 0;
+  position: absolute;
+  inset: 0;
+  /* §3/§4 — no keyframes here. PageStage writes transform/opacity from one
+     interruptible spring value each frame; §11 keeps that path on compositor
+     properties with no React render between frames. */
+  backface-visibility: hidden;
+}
+
+/* -------------------------------------------------------------- music */
+
+.music-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.music-top {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.artwork {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  color: rgb(var(--paper) / 0.92);
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(
+    150deg,
+    hsl(var(--art-hue, 100) 38% 38%),
+    hsl(calc(var(--art-hue, 100) + 26) 34% 17%)
+  );
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.09),
+    inset 0 -8px 18px rgb(0 0 0 / 0.18);
+}
+
+.music-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.music-title,
+.music-artist {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.music-title {
+  font-size: var(--type-title-size);
+  line-height: var(--type-title-leading);
+  letter-spacing: var(--type-title-tracking);
+  font-weight: var(--type-title-weight);
+}
+
+.music-artist {
+  color: var(--text-secondary);
+}
+
+.music-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/* §1 — press feedback is CSS :active, so it is already on screen at
+   pointer-down; §10 — the ::after expands the hit area to ~40px. */
+.icon-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  transition:
+    background-color 140ms ease-out,
+    color 140ms ease-out,
+    transform 90ms ease-out;
+}
+
+.icon-button::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+}
+
+.icon-button:hover {
+  background: rgb(var(--paper) / 0.07);
+  color: var(--text-primary);
+}
+
+.icon-button:active {
+  transform: scale(0.92);
+  background: rgb(var(--paper) / 0.11);
+}
+
+.icon-button[data-primary="true"] {
+  width: 36px;
+  height: 36px;
+  background: rgb(var(--paper) / 0.94);
+  color: var(--text-on-light);
+}
+
+.icon-button[data-primary="true"]:hover {
+  background: rgb(var(--paper));
+}
+
+.icon-button[data-primary="true"]:active {
+  transform: scale(0.94);
+}
+
+/* ----------------------------------------------------------- scrubber */
+
+.scrubber {
+  --p: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scrubber-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 12px;
+  border-radius: 4px;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.scrubber-rail {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  border-radius: 99px;
+  background: rgb(var(--paper) / 0.13);
+  transition: height 140ms ease-out;
+}
+
+.scrubber-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--p) * 100%);
+  max-width: 100%;
+  border-radius: 99px;
+  background: rgb(var(--paper) / 0.9);
+}
+
+.scrubber-thumb {
+  position: absolute;
+  top: 50%;
+  left: clamp(0%, calc(var(--p) * 100%), 100%);
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: rgb(var(--paper));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
+  transform: scale(0);
+  transition: transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* §2 — the thumb appears the moment a scrub begins, then tracks 1:1. */
+.scrubber-track:hover .scrubber-rail,
+.scrubber[data-dragging="true"] .scrubber-rail,
+.scrubber-track:focus-visible .scrubber-rail {
+  height: 4px;
+}
+
+.scrubber-track:hover .scrubber-thumb,
+.scrubber[data-dragging="true"] .scrubber-thumb,
+.scrubber-track:focus-visible .scrubber-thumb {
+  transform: scale(1);
+}
+
+.scrubber-times {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-tertiary);
+}
+
+/* ------------------------------------------------------------- lyrics */
+
+.lyrics-page {
+  position: relative;
+}
+
+.lyrics-viewport {
+  position: absolute;
+  inset: -6px 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    #000 26%,
+    #000 72%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    #000 26%,
+    #000 72%,
+    transparent 100%
+  );
+}
+
+.lyrics-track {
+  display: flex;
+  flex-direction: column;
+  transition: transform 420ms cubic-bezier(0.22, 0.9, 0.24, 1);
+  /* §11 — no speculative will-change: this only moves once per lyric line,
+     not per frame. Promote only after measuring a real shift. */
+}
+
+.lyric {
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-tertiary);
+  text-align: left;
+  line-height: 24px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    color 300ms ease,
+    opacity 300ms ease;
+}
+
+.lyric:hover {
+  opacity: 0.85;
+}
+
+/* §1 — the pressed line reads instantly, on pointer-down, not on release. */
+.lyric:active {
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.lyric[data-active="true"] {
+  color: var(--text-primary);
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  opacity: 1;
+}
+
+/* -------------------------------------------------------------- focus */
+
+.focus-page {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.focus-ring {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.focus-ring svg {
+  transform: rotate(-90deg);
+}
+
+.focus-track {
+  stroke: rgb(var(--paper) / 0.12);
+}
+
+.focus-progress {
+  stroke: rgb(var(--accent));
+  transition: stroke-dashoffset 900ms linear;
+}
+
+.focus-time {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
+  letter-spacing: var(--type-display-tracking);
+}
+
+.focus-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.focus-kicker {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.focus-state {
+  color: var(--text-secondary);
+}
+
+.round-dots {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.round-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgb(var(--paper) / 0.18);
+}
+
+.round-dot[data-state="done"] {
+  background: rgb(var(--accent) / 0.6);
+}
+
+.round-dot[data-state="current"] {
+  background: rgb(var(--accent));
+}
+
+/* -------------------------------------------------------------- water */
+
+.water-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.water-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.water-amount {
+  white-space: nowrap;
+}
+
+.water-unit {
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  letter-spacing: var(--type-body-tracking);
+  color: var(--text-tertiary);
+}
+
+.water-caption {
+  color: var(--text-tertiary);
+}
+
+.bottle {
+  display: flex;
+  align-items: flex-end;
+  width: 26px;
+  height: 64px;
+  padding: 2px;
+  border-radius: var(--radius-sm) var(--radius-sm) var(--radius-md) var(--radius-md);
+  background: rgb(var(--paper) / 0.04);
+  box-shadow: inset 0 0 0 1px rgb(var(--paper) / 0.13);
+}
+
+.bottle-fill {
+  width: 100%;
+  border-radius: 4px 4px 7px 7px;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--accent) / 0.9),
+    rgb(var(--accent) / 0.5)
+  );
+  transition: height 560ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.drink-button {
+  position: relative;
+  height: 28px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 999px;
+  background: rgb(var(--paper) / 0.92);
+  color: var(--text-on-light);
+  transition:
+    background-color 140ms ease-out,
+    transform 90ms ease-out;
+}
+
+.drink-button::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 999px;
+}
+
+.drink-button:hover {
+  background: rgb(var(--paper));
+}
+
+.drink-button:active {
+  transform: scale(0.96);
+}
+
+.drink-button:disabled {
+  background: rgb(var(--paper) / 0.08);
+  color: var(--text-tertiary);
+}
+
+/* -------------------------------------------------------------- shelf */
+
+.shelf-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.shelf-list,
+.todo-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shelf-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.shelf-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: rgb(var(--paper) / 0.07);
+  color: var(--text-secondary);
+}
+
+.shelf-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shelf-meta {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.shelf-more {
+  padding-left: 4px;
+  color: var(--text-tertiary);
+}
+
+/* --------------------------------------------------------------- todo */
+
+.todo-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.todo-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 20px;
+  padding: 0 var(--space-1);
+}
+
+.todo-check {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1.4px solid rgb(var(--paper) / 0.3);
+  border-radius: 50%;
+  background: transparent;
+  color: rgb(var(--ink));
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 90ms ease-out;
+}
+
+.todo-check::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
+
+.todo-check:active {
+  transform: scale(0.88);
+}
+
+.todo-check[aria-checked="true"] {
+  border-color: rgb(var(--accent));
+  background: rgb(var(--accent));
+}
+
+.todo-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.todo-row[data-done="true"] .todo-title {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+  text-decoration-color: rgb(var(--paper) / 0.28);
+}
+
+.todo-due {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.todo-count {
+  padding-left: 4px;
+  color: var(--text-tertiary);
+}
+
+/* --------------------------------------------------------------- tabs */
+
+/* No padding here on purpose: the indicator's left:0 must share a coordinate
+   space with button.offsetLeft, which the measurement uses. */
+.notch-tabs {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  border-radius: 8px;
+  /* §12 — a lighter interactive material over the structural shell. Blur
+     and a bright top edge make it read as a surface catching light. */
+  background: rgb(var(--paper) / 0.055);
+  backdrop-filter: blur(14px) saturate(160%);
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--paper) / 0.06),
+    inset 0 1px 0 rgb(255 255 255 / 0.07);
+}
+
+/* §12 — fade where content meets floating chrome instead of a hard divider. */
+.notch-expanded::after {
+  content: "";
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: 30px;
+  height: 8px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgb(var(--ink) / 0.55));
+}
+
+.tab {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 18px;
+  margin: 2px 0;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--type-label-size);
+  line-height: 1;
+  letter-spacing: var(--type-label-tracking);
+  font-weight: var(--type-label-weight);
+  white-space: nowrap;
+  cursor: default;
+  transition:
+    color 180ms ease-out,
+    transform 90ms ease-out;
+}
+
+.tab svg {
+  width: 11px;
+  height: 11px;
+  opacity: 0.9;
+}
+
+.tab[aria-selected="true"] {
+  color: var(--text-on-light);
+}
+
+.tab:active {
+  transform: scale(0.95);
+}
+
+.tab-indicator {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: var(--ind-w, 0px);
+  height: 18px;
+  border-radius: 6px;
+  background: rgb(var(--paper) / 0.82);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 1px 2px rgb(0 0 0 / 0.35);
+  transform: translateX(var(--ind-x, 0px));
+  pointer-events: none;
+}
+
+/* ----------------------------------------------------------- settings */
+
+.settings-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  padding-top: var(--space-1);
+}
+
+.settings-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.settings-heading {
+  color: var(--text-tertiary);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 24px;
+}
+
+.settings-row > span {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.segmented {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: rgb(var(--paper) / 0.06);
+}
+
+.segmented button {
+  height: 18px;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  cursor: default;
+}
+
+.segmented button[aria-pressed="true"] {
+  background: rgb(var(--paper) / 0.92);
+  color: var(--text-on-light);
+}
+
+.switch {
+  position: relative;
+  width: 26px;
+  height: 14px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: rgb(var(--paper) / 0.14);
+  cursor: default;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+
+.switch[aria-checked="true"] {
+  background: rgb(var(--accent) / 0.92);
+}
+
+.switch[aria-checked="true"]::after {
+  left: 14px;
+  background: var(--ink);
+}
+
+/* ------------------------------------------------------------- states */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+  text-align: center;
+}
+
+.empty-title {
+  color: var(--text-secondary);
+}
+
+.empty-hint {
+  color: var(--text-tertiary);
+}
+
+/* ------------------------------------------------- §14 accessibility */
+
+@media (prefers-reduced-motion: reduce) {
+  /* §14 — no sweep, no spring: the pager jumps to the target and cross-fades.
+     Opacity stays because it aids comprehension; motion does not. */
+  .page-slot {
+    transition: opacity 180ms ease;
+  }
+
+  .lyrics-track,
+  .bottle-fill,
+  .focus-progress,
+  .scrubber-thumb,
+  .scrubber-rail {
+    transition-duration: 0.01ms;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .notch-shell {
+    background: rgb(var(--ink));
+  }
+
+  .notch-tabs {
+    background: rgb(var(--paper) / 0.08);
+    backdrop-filter: none;
+  }
+
+  .notch-expanded::after {
+    background: rgb(var(--ink));
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --text-secondary: rgb(var(--paper) / 0.84);
+    --text-tertiary: rgb(var(--paper) / 0.66);
+    --hairline: rgb(var(--paper) / 0.22);
+  }
+
+  .notch-shell {
+    background: rgb(var(--ink));
+    box-shadow: inset 0 0 0 1px rgb(var(--paper) / 0.26);
+  }
+
+  .notch-tabs {
+    background: rgb(var(--paper) / 0.09);
+    box-shadow: inset 0 0 0 1px rgb(var(--paper) / 0.2);
+  }
+
+  .tab-indicator {
+    background: rgb(var(--paper));
+  }
+
+  .focus-track {
+    stroke: rgb(var(--paper) / 0.3);
+  }
+}

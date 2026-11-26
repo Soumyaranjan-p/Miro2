@@ -1,0 +1,283 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+
+import {
+  getAppSnapshot,
+  isTauri,
+  onFocusUpdate,
+  onLyricsUpdate,
+  onMediaUpdate,
+  onNotchState,
+  onSettingsUpdate,
+  onShelfUpdate,
+  onTodoUpdate,
+  onWaterUpdate,
+} from "../ipc/client";
+import type { AppSnapshot, NotchPhase, PageId } from "../ipc/types";
+import { PAGE_IDS } from "./pages";
+
+interface NotchModel {
+  snapshot: AppSnapshot;
+  phase: NotchPhase;
+  page: PageId;
+  clock: Date;
+  isPreview: boolean;
+  setPage: (page: PageId) => void;
+  setPreviewPhase: (phase: NotchPhase | null) => void;
+  togglePlay: () => void;
+  seek: (ms: number) => void;
+  drink: () => void;
+  toggleTodo: (id: string) => void;
+  toggleFocus: () => void;
+}
+
+const ModelContext = createContext<NotchModel | null>(null);
+
+const PHASES: NotchPhase[] = ["collapsed", "hover", "expanded", "hidden"];
+
+function readPhase(value: string | null): NotchPhase | null {
+  return PHASES.find((phase) => phase === value) ?? null;
+}
+
+function readPage(value: string | null): PageId | null {
+  return PAGE_IDS.find((page) => page === value) ?? null;
+}
+
+const query =
+  typeof window === "undefined" ? null : new URLSearchParams(window.location.search);
+
+// Preview-only deep links, so each page can be reviewed in a browser tab.
+// Tauri always loads the app without a query string, so this never fires there.
+const forcedPhase = import.meta.env.DEV ? readPhase(query?.get("phase") ?? null) : null;
+const forcedPage = import.meta.env.DEV ? readPage(query?.get("page") ?? null) : null;
+
+/** §1 — the clock should flip on the minute, not up to half a minute late. */
+function useMinuteClock(): Date {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    let timer = 0;
+
+    const schedule = () => {
+      const current = new Date();
+      const elapsed = current.getSeconds() * 1000 + current.getMilliseconds();
+      timer = window.setTimeout(
+        () => {
+          setNow(new Date());
+          schedule();
+        },
+        Math.max(250, 60_000 - elapsed),
+      );
+    };
+
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return now;
+}
+
+function patchSnapshot(
+  update: (snapshot: AppSnapshot) => AppSnapshot,
+): (snapshot: AppSnapshot | null) => AppSnapshot | null {
+  return (snapshot) => (snapshot ? update(snapshot) : snapshot);
+}
+
+export function NotchProvider({ children }: { children: ReactNode }) {
+  const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null);
+  const [previewPhase, setPreviewPhase] = useState<NotchPhase | null>(null);
+  const clock = useMinuteClock();
+
+  useEffect(() => {
+    let cancelled = false;
+    const stops: Array<() => void> = [];
+
+    getAppSnapshot().then((initial) => {
+      if (!cancelled) setSnapshot(initial);
+    });
+
+    const watch = <T,>(
+      subscribe: (handler: (value: T) => void) => Promise<() => void>,
+      apply: (current: AppSnapshot, value: T) => AppSnapshot,
+    ) => {
+      subscribe((value) => {
+        setSnapshot((current) => (current ? apply(current, value) : current));
+      }).then((stop) => {
+        if (cancelled) stop();
+        else stops.push(stop);
+      });
+    };
+
+    watch(onNotchState, (current, notch) => ({
+      ...current,
+      notch: { ...current.notch, ...notch },
+    }));
+    watch(onMediaUpdate, (current, media) => ({ ...current, media }));
+    watch(onLyricsUpdate, (current, lyrics) => ({ ...current, lyrics }));
+    watch(onFocusUpdate, (current, focus) => ({ ...current, focus }));
+    watch(onWaterUpdate, (current, water) => ({ ...current, water }));
+    watch(onShelfUpdate, (current, shelf) => ({ ...current, shelf }));
+    watch(onTodoUpdate, (current, todo) => ({ ...current, todo }));
+    watch(onSettingsUpdate, (current, settings) => ({ ...current, settings }));
+
+    return () => {
+      cancelled = true;
+      stops.forEach((stop) => stop());
+    };
+  }, []);
+
+  // Preview clock: keep the mock timeline moving so motion can be judged live.
+  useEffect(() => {
+    if (isTauri || !snapshot?.media?.playing) return;
+    const timer = window.setInterval(() => {
+      setSnapshot(
+        patchSnapshot((current) => {
+          const media = current.media;
+          if (!media?.playing) return current;
+          const positionMs = Math.min(media.durationMs, media.positionMs + 1000);
+          return {
+            ...current,
+            media: {
+              ...media,
+              positionMs,
+              playing: positionMs < media.durationMs,
+            },
+          };
+        }),
+      );
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [snapshot?.media?.playing]);
+
+  // Preview countdown for the focus page.
+  useEffect(() => {
+    if (isTauri || !snapshot?.focus?.running) return;
+    const timer = window.setInterval(() => {
+      setSnapshot(
+        patchSnapshot((current) => {
+          const focus = current.focus;
+          if (!focus.running) return current;
+          const remainingMs = Math.max(0, focus.remainingMs - 1000);
+          return {
+            ...current,
+            focus: { ...focus, remainingMs, running: remainingMs > 0 },
+          };
+        }),
+      );
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [snapshot?.focus?.running]);
+
+  const setPage = useCallback((page: PageId) => {
+    setSnapshot(
+      patchSnapshot((current) => ({
+        ...current,
+        notch: { ...current.notch, page },
+      })),
+    );
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    setSnapshot(
+      patchSnapshot((current) => {
+        const media = current.media;
+        if (!media) return current;
+        return { ...current, media: { ...media, playing: !media.playing } };
+      }),
+    );
+  }, []);
+
+  const seek = useCallback((ms: number) => {
+    setSnapshot(
+      patchSnapshot((current) => {
+        const media = current.media;
+        if (!media) return current;
+        const positionMs = Math.min(media.durationMs, Math.max(0, ms));
+        return { ...current, media: { ...media, positionMs } };
+      }),
+    );
+  }, []);
+
+  const drink = useCallback(() => {
+    setSnapshot(
+      patchSnapshot((current) => {
+        const water = current.water;
+        if (water.todayMl >= water.goalMl) return current;
+        const ml = Math.min(water.bottleMl, water.goalMl - water.todayMl);
+        return {
+          ...current,
+          water: {
+            ...water,
+            todayMl: water.todayMl + ml,
+            entries: [...water.entries, { atMs: Date.now(), ml }],
+          },
+        };
+      }),
+    );
+  }, []);
+
+  const toggleTodo = useCallback((id: string) => {
+    setSnapshot(
+      patchSnapshot((current) => ({
+        ...current,
+        todo: current.todo.map((item) =>
+          item.id === id ? { ...item, done: !item.done } : item,
+        ),
+      })),
+    );
+  }, []);
+
+  const toggleFocus = useCallback(() => {
+    setSnapshot(
+      patchSnapshot((current) => ({
+        ...current,
+        focus: { ...current.focus, running: !current.focus.running },
+      })),
+    );
+  }, []);
+
+  const value = useMemo<NotchModel | null>(() => {
+    if (!snapshot) return null;
+    return {
+      snapshot,
+      phase: forcedPhase ?? previewPhase ?? snapshot.notch.phase,
+      page: forcedPage ?? snapshot.notch.page,
+      clock,
+      isPreview: !isTauri,
+      setPage,
+      setPreviewPhase,
+      togglePlay,
+      seek,
+      drink,
+      toggleTodo,
+      toggleFocus,
+    };
+  }, [
+    snapshot,
+    previewPhase,
+    clock,
+    setPage,
+    togglePlay,
+    seek,
+    drink,
+    toggleTodo,
+    toggleFocus,
+  ]);
+
+  if (!value) return null;
+
+  return <ModelContext.Provider value={value}>{children}</ModelContext.Provider>;
+}
+
+export function useModel(): NotchModel {
+  const model = useContext(ModelContext);
+  if (!model) throw new Error("useModel must be used inside NotchProvider");
+  return model;
+}

@@ -5,7 +5,8 @@ export type PageId =
   | "focus"
   | "water"
   | "shelf"
-  | "todo";
+  | "todo"
+  | "settings";
 
 export type NotchPhase = "collapsed" | "hover" | "expanded" | "hidden";
 export type ThemeMode = "dark" | "light" | "system";
