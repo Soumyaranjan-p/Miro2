@@ -34,7 +34,9 @@
       rgb(var(--paper) / 0.015) 42%,
       rgb(var(--shade) / 0.16) 100%
     ),
-    rgb(var(--ink) / 0.96);
+    /* §12 — opaque on purpose: the window itself is transparent, so any alpha
+       here lets the desktop bleed through and ghost behind the content. */
+    rgb(var(--ink));
   box-shadow:
     inset 0 0 0 1px rgb(var(--paper) / 0.07),
     inset 0 -1px 0 rgb(var(--paper) / 0.1),
@@ -218,14 +220,17 @@
   height: 48px;
   border-radius: var(--radius-md);
   color: rgb(var(--paper) / 0.92);
-  font-size: 15px;
-  font-weight: 600;
+  /* §15 — the monogram is a Display-size glyph, not a shrunken title: at 48px
+     the box is a poster, and a 15px letter reads as a watermark. */
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight);
   background: linear-gradient(
     150deg,
     hsl(var(--art-hue, 100) 38% 38%),
     hsl(calc(var(--art-hue, 100) + 26) 34% 17%)
   );
   box-shadow:
+    0 1px 6px rgb(0 0 0 / 0.3),
     inset 0 0 0 1px rgb(255 255 255 / 0.09),
     inset 0 -8px 18px rgb(0 0 0 / 0.18);
 }
@@ -277,7 +282,7 @@
   transition:
     background-color 140ms ease-out,
     color 140ms ease-out,
-    transform 90ms ease-out;
+    transform 100ms ease-out;
 }
 
 .icon-button::after {
@@ -302,6 +307,12 @@
   height: 36px;
   background: rgb(var(--paper) / 0.94);
   color: var(--text-on-light);
+  /* §12 — the one raised key on the surface. Without depth it reads as flat
+     paint; the shadow lifts it and the top edge catches light, so the finger
+     knows where it lands before it gets there. */
+  box-shadow:
+    0 2px 8px rgb(0 0 0 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.18);
 }
 
 .icon-button[data-primary="true"]:hover {
@@ -309,7 +320,10 @@
 }
 
 .icon-button[data-primary="true"]:active {
-  transform: scale(0.94);
+  transform: scale(0.97);
+  box-shadow:
+    0 1px 4px rgb(0 0 0 / 0.3),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
 }
 
 /* ----------------------------------------------------------- scrubber */
@@ -331,12 +345,20 @@
   cursor: pointer;
 }
 
+/* §10 — hit padding: a 12px rail is a 12px target. This invisible skin grows
+   the grab area to ~30px tall without moving a single pixel of layout. */
+.scrubber-track::after {
+  content: "";
+  position: absolute;
+  inset: -9px 0;
+}
+
 .scrubber-rail {
   position: relative;
   flex: 1;
-  height: 3px;
+  height: 4px;
   border-radius: 99px;
-  background: rgb(var(--paper) / 0.13);
+  background: rgb(var(--paper) / 0.22);
   transition: height 140ms ease-out;
 }
 
@@ -353,26 +375,32 @@
   position: absolute;
   top: 50%;
   left: clamp(0%, calc(var(--p) * 100%), 100%);
-  width: 9px;
-  height: 9px;
-  margin: -4.5px 0 0 -4.5px;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
   border-radius: 50%;
   background: rgb(var(--paper));
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
-  transform: scale(0);
-  transition: transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* §12 — materialize, don't pop: it arrives as a real object at 90%, never
+     from a point. */
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* §2 — the thumb appears the moment a scrub begins, then tracks 1:1. */
 .scrubber-track:hover .scrubber-rail,
 .scrubber[data-dragging="true"] .scrubber-rail,
 .scrubber-track:focus-visible .scrubber-rail {
-  height: 4px;
+  height: 6px;
 }
 
 .scrubber-track:hover .scrubber-thumb,
 .scrubber[data-dragging="true"] .scrubber-thumb,
 .scrubber-track:focus-visible .scrubber-thumb {
+  opacity: 1;
   transform: scale(1);
 }
 
