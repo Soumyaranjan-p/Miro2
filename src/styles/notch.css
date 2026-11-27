@@ -410,6 +410,24 @@
   color: var(--text-tertiary);
 }
 
+/* §16 — a live stream has no timeline to scrub, so say so instead of drawing
+   an empty bar with two 0:00s under it. Same height as the scrubber it
+   replaces, so the page never jumps when a session goes live. */
+.scrubber-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  color: var(--text-tertiary);
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(var(--danger));
+}
+
 /* ------------------------------------------------------------- lyrics */
 
 .lyrics-page {

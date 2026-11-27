@@ -39,11 +39,18 @@ export function MusicPage() {
         </div>
       </div>
 
-      <Scrubber
-        positionMs={media.positionMs}
-        durationMs={media.durationMs}
-        onSeek={seek}
-      />
+      {media.durationMs > 0 ? (
+        <Scrubber
+          positionMs={media.positionMs}
+          durationMs={media.durationMs}
+          onSeek={seek}
+        />
+      ) : (
+        <div className="scrubber-live t-meta">
+          <span className="live-dot" aria-hidden="true" />
+          Live
+        </div>
+      )}
     </div>
   );
 }
