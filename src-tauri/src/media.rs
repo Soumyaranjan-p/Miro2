@@ -14,15 +14,21 @@
 use std::thread;
 use std::time::Duration;
 
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine as _;
 use tauri::{AppHandle, Emitter};
 use windows::Media::Control::{
     GlobalSystemMediaTransportControlsSessionManager as SessionManager,
+    GlobalSystemMediaTransportControlsSessionMediaProperties as SessionMediaProperties,
     GlobalSystemMediaTransportControlsSessionPlaybackStatus as PlaybackStatus,
 };
+use windows::Storage::Streams::DataReader;
 
 use crate::ipc::types::MediaState;
 
 const TICK_MS: u64 = 1000;
+/// Guard against absurd posters; a normal SMTC thumbnail is far below this.
+const MAX_THUMBNAIL_BYTES: u64 = 2_000_000;
 
 pub fn spawn(app: AppHandle) {
     thread::Builder::new()
@@ -43,9 +49,10 @@ fn run(app: AppHandle) {
     };
 
     let mut had_session = false;
+    let mut artwork = ArtworkCache::default();
 
     loop {
-        let state = read_session(&manager);
+        let state = read_session(&manager, &mut artwork);
 
         // Nothing playing is worth announcing once, not sixty times a minute.
         if state.is_some() || had_session {
@@ -62,12 +69,21 @@ fn run(app: AppHandle) {
     }
 }
 
+/// The artwork of the current track, decoded once and reused until the track
+/// changes. The cache also remembers failures, so an app that publishes no
+/// thumbnail costs one attempt per track, not one per second.
+#[derive(Default)]
+struct ArtworkCache {
+    key: String,
+    url: Option<String>,
+}
+
 /// The most recent session that is actually playing something.
 ///
 /// Browsers keep their session alive for a while after a video ends, and some
 /// apps register one at startup and never use it, so an empty title is treated
 /// as "no session" instead of showing a blank player.
-fn read_session(manager: &SessionManager) -> Option<MediaState> {
+fn read_session(manager: &SessionManager, artwork: &mut ArtworkCache) -> Option<MediaState> {
     let sessions = manager.GetSessions().ok()?;
     let count = sessions.Size().ok()?;
 
@@ -92,19 +108,82 @@ fn read_session(manager: &SessionManager) -> Option<MediaState> {
             Ok(PlaybackStatus::Playing)
         );
 
+        let session_id = text(session.SourceAppUserModelId());
+        let artwork_key = format!("{session_id}|{title}|{artist}");
+
         return Some(MediaState {
-            session_id: text(session.SourceAppUserModelId()),
+            session_id,
             title,
             artist,
             album: non_empty(text(properties.AlbumTitle())),
             duration_ms: end,
             position_ms: position.min(end),
             playing,
-            artwork_url: None,
+            artwork_url: artwork_for(&properties, &artwork_key, artwork),
         });
     }
 
     None
+}
+
+fn artwork_for(
+    properties: &SessionMediaProperties,
+    key: &str,
+    cache: &mut ArtworkCache,
+) -> Option<String> {
+    if cache.key != key {
+        cache.key = key.to_string();
+        cache.url = read_thumbnail(properties);
+    }
+    cache.url.clone()
+}
+
+/// SMTC ships the artwork the publishing app provided — for a browser tab
+/// that is the video poster. Inlined as a data URL so the webview needs no
+/// asset-protocol scope and no temp files.
+fn read_thumbnail(properties: &SessionMediaProperties) -> Option<String> {
+    let reference = properties.Thumbnail().ok()?;
+    let stream = reference
+        .OpenReadAsync()
+        .and_then(|operation| operation.join())
+        .ok()?;
+    let size = stream.Size().ok()?;
+    if size == 0 || size > MAX_THUMBNAIL_BYTES {
+        return None;
+    }
+    let content_type = stream
+        .ContentType()
+        .map(|value| value.to_string())
+        .unwrap_or_default();
+
+    let reader = DataReader::CreateDataReader(&stream).ok()?;
+    reader
+        .LoadAsync(size as u32)
+        .and_then(|operation| operation.join())
+        .ok()?;
+    let mut bytes = vec![0u8; size as usize];
+    reader.ReadBytes(&mut bytes).ok()?;
+
+    let mime = match content_type.as_str() {
+        "image/png" | "image/jpeg" | "image/webp" | "image/gif" => content_type,
+        _ => sniff_mime(&bytes)?.to_string(),
+    };
+    Some(format!("data:{mime};base64,{}", STANDARD.encode(bytes)))
+}
+
+/// A minority of apps publish an empty content type; the magic bytes decide.
+fn sniff_mime(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(&[0x89, b'P', b'N', b'G']) {
+        Some("image/png")
+    } else if bytes.starts_with(&[0xFF, 0xD8]) {
+        Some("image/jpeg")
+    } else if bytes.starts_with(b"RIFF") && bytes.len() > 11 && &bytes[8..12] == b"WEBP" {
+        Some("image/webp")
+    } else if bytes.starts_with(b"GIF8") {
+        Some("image/gif")
+    } else {
+        None
+    }
 }
 
 fn text(value: windows::core::Result<windows::core::HSTRING>) -> String {

@@ -18,17 +18,51 @@ function glyphFor(title?: string, artist?: string): string {
   return (fromTitle ?? fromArtist ?? "M").toUpperCase();
 }
 
+interface ArtworkProps {
+  title?: string;
+  artist?: string;
+  playing?: boolean;
+  /** SMTC artwork from the backend (data URL); the monogram stays underneath
+      as the fallback, so a missing or broken image still reads as a tile. */
+  url?: string | null;
+}
+
 /**
  * §15/§12 — a deterministic tint keeps album art calm and on-brand; the letter
  * keeps it legible without loading a bitmap the app does not have yet.
+ * §16 — `playing` shows the now-playing badge and lets the tile dim when
+ * paused, so the artwork itself carries the state (CSS owns the motion).
  */
-export function Artwork({ title, artist }: { title?: string; artist?: string }) {
+export function Artwork({ title, artist, playing = false, url }: ArtworkProps) {
   const seed = `${artist ?? ""}${title ?? ""}` || "miro";
   const style = { "--art-hue": hueFor(seed) } as CSSProperties;
 
   return (
-    <div className="artwork" style={style} aria-hidden="true">
+    <div
+      className="artwork"
+      style={style}
+      data-playing={playing ? "true" : "false"}
+      aria-hidden="true"
+    >
       <span>{glyphFor(title, artist)}</span>
+      {url && (
+        <img
+          className="artwork-image"
+          src={url}
+          alt=""
+          decoding="async"
+          // A bad data URL must fall back to the tinted monogram, not to the
+          // browser's broken-image glyph.
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      )}
+      <span className="artwork-eq">
+        <i />
+        <i />
+        <i />
+      </span>
     </div>
   );
 }

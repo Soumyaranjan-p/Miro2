@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -36,6 +37,7 @@ interface NotchModel {
   drink: () => void;
   toggleTodo: (id: string) => void;
   toggleFocus: () => void;
+  endFocus: () => void;
 }
 
 const ModelContext = createContext<NotchModel | null>(null);
@@ -141,6 +143,8 @@ export function NotchProvider({ children }: { children: ReactNode }) {
         patchSnapshot((current) => {
           const media = current.media;
           if (!media?.playing) return current;
+          // Live streams have no clock to tick; their playing state just holds.
+          if (media.durationMs <= 0) return current;
           const positionMs = Math.min(media.durationMs, media.positionMs + 1000);
           return {
             ...current,
@@ -243,11 +247,39 @@ export function NotchProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const endFocus = useCallback(() => {
+    setSnapshot(
+      patchSnapshot((current) => ({
+        ...current,
+        focus: { ...current.focus, running: false, remainingMs: 0 },
+      })),
+    );
+  }, []);
+
+  // §16 wayfinding — a fresh expansion always opens on Focus: the notch's
+  // home face is the deep-work timer (the user's last page still wins while
+  // already expanded, and a hidden Focus page is never forced).
+  const prevPhaseRef = useRef<NotchPhase | null>(null);
+  const phase: NotchPhase =
+    forcedPhase ?? previewPhase ?? snapshot?.notch.phase ?? "collapsed";
+
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    if (!snapshot) return;
+    if (prev !== null && prev !== "expanded" && phase === "expanded") {
+      const focusHidden = snapshot.notch.pagesHidden.includes("focus");
+      if (!focusHidden && snapshot.notch.page !== "focus") {
+        setPage("focus");
+      }
+    }
+  }, [phase, snapshot, setPage]);
+
   const value = useMemo<NotchModel | null>(() => {
     if (!snapshot) return null;
     return {
       snapshot,
-      phase: forcedPhase ?? previewPhase ?? snapshot.notch.phase,
+      phase,
       page: forcedPage ?? snapshot.notch.page,
       clock,
       isPreview: !isTauri,
@@ -258,10 +290,11 @@ export function NotchProvider({ children }: { children: ReactNode }) {
       drink,
       toggleTodo,
       toggleFocus,
+      endFocus,
     };
   }, [
     snapshot,
-    previewPhase,
+    phase,
     clock,
     setPage,
     togglePlay,
@@ -269,6 +302,7 @@ export function NotchProvider({ children }: { children: ReactNode }) {
     drink,
     toggleTodo,
     toggleFocus,
+    endFocus,
   ]);
 
   if (!value) return null;

@@ -1,17 +1,25 @@
 import { formatClock } from "../app/format";
 import { useModel } from "../app/model";
+import { NotchEyes } from "./controls/NotchEyes";
 
+/**
+ * The face replaces the mark + brand wordmark: on the Windows desktop the
+ * collapsed pill *is* the character now. The clock keeps its place on the
+ * right, and the playing tell survives as a small accent dot (DESIGN.md —
+ * accent only for state that changes).
+ */
 export function CollapsedPill() {
   const { snapshot, clock } = useModel();
-  const media = snapshot.media;
-  const playing = media?.playing ?? false;
+  const playing = snapshot.media?.playing ?? false;
 
   return (
     <div className="notch-collapsed">
-      <span className="collapsed-mark" data-playing={playing} aria-hidden="true">
-        <span className="collapsed-dot" />
-      </span>
-      <span className="collapsed-brand">Miro</span>
+      <NotchEyes />
+      <span
+        className="collapsed-live-dot"
+        data-playing={playing ? "true" : "false"}
+        aria-hidden="true"
+      />
       <time className="collapsed-clock tnum" dateTime={clock.toISOString()}>
         {formatClock(clock)}
       </time>
