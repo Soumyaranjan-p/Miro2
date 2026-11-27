@@ -8,6 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 # Agent skills (third-party, reinstallable)
 .agents/
+.claude/skills/
+
+# Agent run artifacts
+.zwork/
 node_modules
 dist
 dist-ssr
