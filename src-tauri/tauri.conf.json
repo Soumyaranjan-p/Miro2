@@ -31,6 +31,28 @@
         "closable": false,
         "focus": false,
         "shadow": false
+      },
+      {
+        "label": "dock",
+        "title": "Miro Usage",
+        "url": "index.html?window=dock",
+        "width": 360,
+        "height": 900,
+        "x": 0,
+        "y": 0,
+        "center": false,
+        "visible": false,
+        "transparent": true,
+        "noRedirectionBitmap": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "closable": false,
+        "focus": false,
+        "shadow": false
       }
     ],
     "security": {

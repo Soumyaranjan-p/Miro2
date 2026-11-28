@@ -1,8 +1,9 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::app::notch::NotchRuntime;
+use crate::usage::{store, InteractiveRect, UsageRuntime};
 
-use super::types::{default_snapshot, AppSnapshot, NotchState};
+use super::types::{default_snapshot, AppSnapshot, NotchState, UsageSettings};
 
 #[tauri::command]
 pub fn notch_state(runtime: State<'_, NotchRuntime>) -> NotchState {
@@ -16,4 +17,28 @@ pub fn notch_state(runtime: State<'_, NotchRuntime>) -> NotchState {
 #[tauri::command]
 pub fn app_snapshot(runtime: State<'_, NotchRuntime>) -> AppSnapshot {
     default_snapshot(runtime.phase())
+}
+
+#[tauri::command]
+pub fn usage_settings_get(runtime: State<'_, UsageRuntime>) -> UsageSettings {
+    runtime.settings.lock().expect("settings mutex").clone()
+}
+
+#[tauri::command]
+pub fn usage_settings_set(
+    app: AppHandle,
+    runtime: State<'_, UsageRuntime>,
+    settings: UsageSettings,
+) -> Result<(), String> {
+    store::save(&app, &settings)?;
+    *runtime.settings.lock().expect("settings mutex") = settings;
+    Ok(())
+}
+
+/// The dock frontend reports its interactive areas (rings, open popover,
+/// settings panel) whenever the layout changes; the cursor thread decides
+/// click-through from these.
+#[tauri::command]
+pub fn dock_report_layout(runtime: State<'_, UsageRuntime>, rects: Vec<InteractiveRect>) {
+    *runtime.interactive.lock().expect("interactive mutex") = rects;
 }

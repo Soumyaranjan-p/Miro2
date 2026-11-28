@@ -1,15 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
-import { createMockSnapshot } from "./mock";
+import { createMockSnapshot, mockUsageSettings } from "./mock";
 import type {
   AppSnapshot,
   FocusState,
+  InteractiveRect,
   MediaState,
   NotchState,
   Settings,
   ShelfItem,
   TodoItem,
+  UsageSettings,
+  UsageState,
   WaterState,
 } from "./types";
 
@@ -99,4 +102,28 @@ export function onSettingsUpdate(
   return listen<Settings>("settings:update", (event) =>
     handler(event.payload),
   );
+}
+
+export function onUsageUpdate(
+  handler: (state: UsageState) => void,
+): Promise<UnlistenFn> {
+  if (!isTauri) return Promise.resolve(() => {});
+  return listen<UsageState>("usage:update", (event) =>
+    handler(event.payload),
+  );
+}
+
+export async function getUsageSettings(): Promise<UsageSettings> {
+  if (!isTauri) return mockUsageSettings();
+  return invoke<UsageSettings>("usage_settings_get");
+}
+
+export async function setUsageSettings(settings: UsageSettings): Promise<void> {
+  if (!isTauri) return;
+  await invoke("usage_settings_set", { settings });
+}
+
+export async function reportDockLayout(rects: InteractiveRect[]): Promise<void> {
+  if (!isTauri) return;
+  await invoke("dock_report_layout", { rects });
 }

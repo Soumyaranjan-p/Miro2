@@ -1,4 +1,5 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::app::hover::NotchPhase;
 
@@ -180,5 +181,81 @@ pub fn default_snapshot(phase: NotchPhase) -> AppSnapshot {
         },
         shelf: Vec::new(),
         todo: Vec::new(),
+    }
+}
+
+/// One measured window of a provider ("Current session", "Today", ...).
+/// Mirrors `UsageWindow` in `src/ipc/types.ts`.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageWindow {
+    pub label: String,
+    pub used: u64,
+    pub limit: u64,
+    pub percent: f64,
+    /// RFC 3339 local time; empty when the window never resets.
+    pub resets_at: String,
+}
+
+/// Mirrors `ProviderUsage` in `src/ipc/types.ts`.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderUsage {
+    pub id: String,
+    /// The tool's local data exists on this machine. Read by the frontend,
+    /// which decides whether a ring shows at all.
+    #[allow(dead_code)]
+    pub present: bool,
+    /// The user enabled it in the dock settings.
+    #[allow(dead_code)]
+    pub enabled: bool,
+    pub windows: Vec<UsageWindow>,
+}
+
+/// Mirrors `UsageState` in `src/ipc/types.ts`.
+#[derive(Clone, Debug, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageState {
+    pub providers: Vec<ProviderUsage>,
+}
+
+/// Per-provider dock settings. Mirrors `ProviderSetting` in `src/ipc/types.ts`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ProviderSetting {
+    pub enabled: bool,
+    pub limit_override: Option<u64>,
+}
+
+impl Default for ProviderSetting {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            limit_override: None,
+        }
+    }
+}
+
+/// Mirrors `UsageSettings` in `src/ipc/types.ts`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct UsageSettings {
+    pub providers: HashMap<String, ProviderSetting>,
+    /// "right" or "left" screen edge.
+    pub dock_side: String,
+}
+
+impl Default for UsageSettings {
+    fn default() -> Self {
+        Self {
+            providers: HashMap::new(),
+            dock_side: String::from("right"),
+        }
+    }
+}
+
+impl UsageSettings {
+    pub fn provider(&self, id: &str) -> ProviderSetting {
+        self.providers.get(id).cloned().unwrap_or_default()
     }
 }

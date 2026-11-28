@@ -29,6 +29,11 @@ use crate::ipc::types::MediaState;
 const TICK_MS: u64 = 1000;
 /// Guard against absurd posters; a normal SMTC thumbnail is far below this.
 const MAX_THUMBNAIL_BYTES: u64 = 2_000_000;
+/// Chromium publishes the app icon first and swaps in the real poster a beat
+/// later, so the cached image is re-read after this many ticks. For a live
+/// stream the title never changes — without the re-read a first-second icon
+/// would stick for hours while the OS flyout already shows the poster.
+const ARTWORK_REREAD_TICKS: u32 = 10;
 
 pub fn spawn(app: AppHandle) {
     thread::Builder::new()
@@ -69,13 +74,15 @@ fn run(app: AppHandle) {
     }
 }
 
-/// The artwork of the current track, decoded once and reused until the track
-/// changes. The cache also remembers failures, so an app that publishes no
-/// thumbnail costs one attempt per track, not one per second.
+/// The artwork of the current track. A fresh track starts blank and retries
+/// every tick until its artwork arrives; a known track re-reads periodically
+/// so late poster swaps are picked up, keeping the last good image if a
+/// refresh fails rather than flickering to blank.
 #[derive(Default)]
 struct ArtworkCache {
     key: String,
     url: Option<String>,
+    ticks_since_read: u32,
 }
 
 /// The most recent session that is actually playing something.
@@ -132,8 +139,20 @@ fn artwork_for(
     cache: &mut ArtworkCache,
 ) -> Option<String> {
     if cache.key != key {
+        // A fresh track shows nothing until its own artwork arrives — never
+        // the previous track's image.
         cache.key = key.to_string();
         cache.url = read_thumbnail(properties);
+        cache.ticks_since_read = 0;
+    } else if cache.url.is_none() || cache.ticks_since_read >= ARTWORK_REREAD_TICKS {
+        // Retry while blank; refresh periodically once an image exists, and
+        // keep the last good one if a refresh fails.
+        if let Some(url) = read_thumbnail(properties) {
+            cache.url = Some(url);
+        }
+        cache.ticks_since_read = 0;
+    } else {
+        cache.ticks_since_read += 1;
     }
     cache.url.clone()
 }
@@ -222,6 +241,7 @@ mod tests {
 
         let count = manager.GetSessions().expect("sessions").Size().unwrap_or(0);
         eprintln!("[test] sessions on the desktop: {count}");
-        eprintln!("[test] read: {:?}", read_session(&manager));
+        let mut artwork = ArtworkCache::default();
+        eprintln!("[test] read: {:?}", read_session(&manager, &mut artwork));
     }
 }

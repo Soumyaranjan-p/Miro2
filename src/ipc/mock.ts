@@ -1,6 +1,77 @@
-import type { AppSnapshot } from "./types";
+import type { AppSnapshot, UsageSettings, UsageState } from "./types";
 
 const BASE = Date.now();
+
+const inMinutes = (minutes: number) => new Date(BASE + minutes * 60_000).toISOString();
+
+/** Preview usage so the dock can be designed in a browser tab. */
+export function mockUsageState(): UsageState {
+  return {
+    providers: [
+      {
+        id: "zcode",
+        present: true,
+        enabled: true,
+        windows: [
+          {
+            label: "Today",
+            used: 61_200_000,
+            limit: 89_285_631,
+            percent: 68.5,
+            resetsAt: inMinutes(51),
+          },
+          {
+            label: "This week",
+            used: 6_500_000,
+            limit: 89_285_631,
+            percent: 7.3,
+            resetsAt: inMinutes(2 * 24 * 60),
+          },
+        ],
+      },
+      {
+        id: "opencode",
+        present: true,
+        enabled: true,
+        windows: [
+          {
+            label: "Today",
+            used: 24_000_000,
+            limit: 118_980_653,
+            percent: 20.2,
+            resetsAt: inMinutes(51),
+          },
+          {
+            label: "This week",
+            used: 210_000_000,
+            limit: 237_326_773,
+            percent: 88.5,
+            resetsAt: inMinutes(3 * 24 * 60),
+          },
+        ],
+      },
+      {
+        id: "claude",
+        present: false,
+        enabled: true,
+        windows: [],
+      },
+      {
+        id: "codex",
+        present: false,
+        enabled: true,
+        windows: [],
+      },
+    ],
+  };
+}
+
+export function mockUsageSettings(): UsageSettings {
+  return {
+    providers: {},
+    dockSide: "right",
+  };
+}
 
 export function createMockSnapshot(): AppSnapshot {
   return {
