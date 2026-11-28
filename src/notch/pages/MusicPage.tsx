@@ -10,7 +10,13 @@ import { useModel } from "../../app/model";
 import { Artwork } from "../controls/Artwork";
 import { IconButton } from "../controls/IconButton";
 import { Scrubber } from "../controls/Scrubber";
-import { LyricsIcon, PauseIcon, PlayIcon } from "../../ui/icons";
+import {
+  LyricsIcon,
+  NextIcon,
+  PauseIcon,
+  PlayIcon,
+  PreviousIcon,
+} from "../../ui/icons";
 import { EmptyState } from "./EmptyState";
 import { LyricsPage } from "./LyricsPage";
 
@@ -103,7 +109,7 @@ function readView(): MusicView {
  * list no longer carries it. The switch is a 200ms cross-fade, nothing more.
  */
 export function MusicPage() {
-  const { snapshot, togglePlay, seek } = useModel();
+  const { snapshot, togglePlay, seek, nextTrack, previousTrack } = useModel();
   const media = snapshot.media;
   const [view, setView] = useState<MusicView>(readView);
 
@@ -156,6 +162,9 @@ export function MusicPage() {
               >
                 <LyricsIcon />
               </IconButton>
+              <IconButton label="Previous" onClick={previousTrack}>
+                <PreviousIcon />
+              </IconButton>
               <IconButton
                 label={media.playing ? "Pause" : "Play"}
                 primary
@@ -169,6 +178,9 @@ export function MusicPage() {
                   <PlayIcon className="play-glyph play-glyph-play" />
                   <PauseIcon className="play-glyph play-glyph-pause" />
                 </span>
+              </IconButton>
+              <IconButton label="Next" onClick={nextTrack}>
+                <NextIcon />
               </IconButton>
             </div>
           </div>

@@ -1,11 +1,13 @@
 export type PageId =
   | "clock"
   | "music"
+  | "widgets"
   | "usage"
   | "focus"
   | "water"
   | "shelf"
   | "todo"
+  | "system"
   | "settings";
 
 export type NotchPhase = "collapsed" | "hover" | "expanded" | "hidden";
@@ -104,7 +106,7 @@ export interface TodoItem {
   dueAt: number | null;
 }
 
-export type MediaAction = "toggle" | "next" | "prev";
+export type MediaAction = "toggle" | "play" | "pause" | "next" | "previous";
 export type ShelfAction = "open" | "reveal" | "remove";
 
 export interface UsageWindow {
@@ -136,4 +138,32 @@ export interface ProviderSetting {
 
 export interface UsageSettings {
   providers: Record<string, ProviderSetting>;
+}
+
+/** Live machine readout for the System page. */
+export interface SystemState {
+  cpuPercent: number;
+  ramUsedBytes: number;
+  ramTotalBytes: number;
+  diskUsedBytes: number;
+  diskTotalBytes: number;
+}
+
+export interface PowerState {
+  /** True while the charger is connected. */
+  charging: boolean;
+  /** 0-100; null when the machine has no battery (desktop). */
+  batteryPercent: number | null;
+}
+
+export interface BluetoothDeviceState {
+  id: string;
+  name: string;
+  /** 0-100 when the device reports it; null when it does not. */
+  batteryPercent: number | null;
+  connected: boolean;
+}
+
+export interface BluetoothState {
+  devices: BluetoothDeviceState[];
 }

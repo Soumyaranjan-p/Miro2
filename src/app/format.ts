@@ -39,6 +39,17 @@ export function formatLiters(ml: number): string {
   return (ml / 1000).toFixed(1);
 }
 
+/** Quota sizes read as K/M; below a million nobody wants decimals. */
+export function formatTokens(value: number): string {
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000;
+    const digits = millions >= 100 ? 0 : 1;
+    const text = millions.toFixed(digits).replace(/\.0$/, "");
+    return `${text}M`;
+  }
+  return `${Math.max(1, Math.round(value / 1000))}K`;
+}
+
 export function formatDue(at: number | null): string {
   if (at === null) return "";
   return new Intl.DateTimeFormat(undefined, {

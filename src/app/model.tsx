@@ -11,17 +11,32 @@ import {
 
 import {
   getAppSnapshot,
+  controlMedia,
+  driftSystemState,
   isTauri,
+  mockBluetoothState,
+  mockPowerState,
+  mockSystemState,
+  onBluetoothUpdate,
   onFocusUpdate,
   onLyricsUpdate,
   onMediaUpdate,
   onNotchState,
+  onPowerUpdate,
   onSettingsUpdate,
   onShelfUpdate,
+  onSystemUpdate,
   onTodoUpdate,
   onWaterUpdate,
 } from "../ipc/client";
-import type { AppSnapshot, NotchPhase, PageId } from "../ipc/types";
+import type {
+  AppSnapshot,
+  BluetoothState,
+  NotchPhase,
+  PageId,
+  PowerState,
+  SystemState,
+} from "../ipc/types";
 import { PAGE_IDS } from "./pages";
 
 interface NotchModel {
@@ -30,10 +45,15 @@ interface NotchModel {
   page: PageId;
   clock: Date;
   isPreview: boolean;
+  system: SystemState | null;
+  power: PowerState | null;
+  bluetooth: BluetoothState | null;
   setPage: (page: PageId) => void;
   setPreviewPhase: (phase: NotchPhase | null) => void;
   togglePlay: () => void;
   seek: (ms: number) => void;
+  nextTrack: () => void;
+  previousTrack: () => void;
   drink: () => void;
   toggleTodo: (id: string) => void;
   toggleFocus: () => void;
@@ -95,7 +115,13 @@ function patchSnapshot(
 export function NotchProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<AppSnapshot | null>(null);
   const [previewPhase, setPreviewPhase] = useState<NotchPhase | null>(null);
+  const [system, setSystem] = useState<SystemState | null>(null);
+  const [power, setPower] = useState<PowerState | null>(null);
+  const [bluetooth, setBluetooth] = useState<BluetoothState | null>(null);
   const clock = useMinuteClock();
+  // A seek races the next poll: SMTC reports the old position for a beat
+  // after the command, and painting it would yank the scrubber backwards.
+  const seekGuardRef = useRef<{ targetMs: number; at: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,13 +147,44 @@ export function NotchProvider({ children }: { children: ReactNode }) {
       ...current,
       notch: { ...current.notch, ...notch },
     }));
-    watch(onMediaUpdate, (current, media) => ({ ...current, media }));
+    watch(onMediaUpdate, (current, media) => {
+      const guard = seekGuardRef.current;
+      if (guard && media) {
+        const arrived = Math.abs(media.positionMs - guard.targetMs) <= 2_500;
+        if (arrived) {
+          seekGuardRef.current = null;
+        } else if (Date.now() - guard.at < 1_000) {
+          // The player still reports the pre-seek position; hold ours and
+          // take the rest of the report (title, playing, artwork).
+          return {
+            ...current,
+            media: { ...media, positionMs: current.media?.positionMs ?? media.positionMs },
+          };
+        } else {
+          seekGuardRef.current = null;
+        }
+      }
+      return { ...current, media };
+    });
     watch(onLyricsUpdate, (current, lyrics) => ({ ...current, lyrics }));
     watch(onFocusUpdate, (current, focus) => ({ ...current, focus }));
     watch(onWaterUpdate, (current, water) => ({ ...current, water }));
     watch(onShelfUpdate, (current, shelf) => ({ ...current, shelf }));
     watch(onTodoUpdate, (current, todo) => ({ ...current, todo }));
     watch(onSettingsUpdate, (current, settings) => ({ ...current, settings }));
+
+    const subscribeSide = <T,>(
+      subscribe: (handler: (value: T) => void) => Promise<() => void>,
+      set: (value: T) => void,
+    ) => {
+      subscribe(set).then((stop) => {
+        if (cancelled) stop();
+        else stops.push(stop);
+      });
+    };
+    subscribeSide(onSystemUpdate, setSystem);
+    subscribeSide(onPowerUpdate, setPower);
+    subscribeSide(onBluetoothUpdate, setBluetooth);
 
     return () => {
       cancelled = true;
@@ -179,6 +236,16 @@ export function NotchProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(timer);
   }, [snapshot?.focus?.running]);
 
+  // Preview system stats: the meters drift like a real machine so the
+  // smooth-update motion can be judged in a browser tab.
+  useEffect(() => {
+    if (isTauri) return;
+    const timer = window.setInterval(() => {
+      setSystem((current) => (current ? driftSystemState(current) : current));
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const setPage = useCallback((page: PageId) => {
     setSnapshot(
       patchSnapshot((current) => ({
@@ -188,6 +255,8 @@ export function NotchProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // §1 — optimistic first: the button reacts instantly, then the command goes
+  // out and the next SMTC poll (≤1 s) reports what YouTube actually did.
   const togglePlay = useCallback(() => {
     setSnapshot(
       patchSnapshot((current) => {
@@ -196,6 +265,7 @@ export function NotchProvider({ children }: { children: ReactNode }) {
         return { ...current, media: { ...media, playing: !media.playing } };
       }),
     );
+    void controlMedia("toggle");
   }, []);
 
   const seek = useCallback((ms: number) => {
@@ -207,6 +277,16 @@ export function NotchProvider({ children }: { children: ReactNode }) {
         return { ...current, media: { ...media, positionMs } };
       }),
     );
+    seekGuardRef.current = { targetMs: ms, at: Date.now() };
+    void controlMedia("seek", ms);
+  }, []);
+
+  const nextTrack = useCallback(() => {
+    void controlMedia("next");
+  }, []);
+
+  const previousTrack = useCallback(() => {
+    void controlMedia("previous");
   }, []);
 
   const drink = useCallback(() => {
@@ -283,10 +363,15 @@ export function NotchProvider({ children }: { children: ReactNode }) {
       page: forcedPage ?? snapshot.notch.page,
       clock,
       isPreview: !isTauri,
+      system: isTauri ? system : mockSystemState(),
+      power: isTauri ? power : mockPowerState(),
+      bluetooth: isTauri ? bluetooth : mockBluetoothState(),
       setPage,
       setPreviewPhase,
       togglePlay,
       seek,
+      nextTrack,
+      previousTrack,
       drink,
       toggleTodo,
       toggleFocus,
@@ -296,9 +381,14 @@ export function NotchProvider({ children }: { children: ReactNode }) {
     snapshot,
     phase,
     clock,
+    system,
+    power,
+    bluetooth,
     setPage,
     togglePlay,
     seek,
+    nextTrack,
+    previousTrack,
     drink,
     toggleTodo,
     toggleFocus,

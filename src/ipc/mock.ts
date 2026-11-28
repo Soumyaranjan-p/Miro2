@@ -1,4 +1,4 @@
-import type { AppSnapshot, UsageSettings, UsageState } from "./types";
+import type { AppSnapshot, BluetoothState, PowerState, SystemState, UsageSettings, UsageState } from "./types";
 
 const BASE = Date.now();
 
@@ -72,6 +72,43 @@ export function mockUsageSettings(): UsageSettings {
   };
 }
 
+const GB = 1_000_000_000;
+
+export function mockSystemState(): SystemState {
+  return {
+    cpuPercent: 23,
+    ramUsedBytes: 9.6 * GB,
+    ramTotalBytes: 16 * GB,
+    diskUsedBytes: 618 * GB,
+    diskTotalBytes: 953 * GB,
+  };
+}
+
+/** Preview only: nudge the readout like a working machine would. */
+export function driftSystemState(current: SystemState): SystemState {
+  const wobble = (value: number, spread: number, floor: number, ceil: number) =>
+    Math.min(ceil, Math.max(floor, value + (Math.random() - 0.5) * spread));
+  return {
+    cpuPercent: wobble(current.cpuPercent, 12, 2, 96),
+    ramUsedBytes: wobble(current.ramUsedBytes / GB, 0.4, 3, current.ramTotalBytes / GB) * GB,
+    ramTotalBytes: current.ramTotalBytes,
+    diskUsedBytes: current.diskUsedBytes,
+    diskTotalBytes: current.diskTotalBytes,
+  };
+}
+
+export function mockPowerState(): PowerState {
+  return { charging: false, batteryPercent: 76 };
+}
+
+export function mockBluetoothState(): BluetoothState {
+  return {
+    devices: [
+      { id: "bt-a", name: "Pixel Buds Pro", batteryPercent: 68, connected: true },
+    ],
+  };
+}
+
 export function createMockSnapshot(): AppSnapshot {
   return {
     version: 1,
@@ -80,11 +117,13 @@ export function createMockSnapshot(): AppSnapshot {
       page: "music",
       pagesOrder: [
         "music",
+        "widgets",
         "usage",
         "focus",
         "water",
         "shelf",
         "todo",
+        "system",
         "settings",
       ],
       pagesHidden: [],

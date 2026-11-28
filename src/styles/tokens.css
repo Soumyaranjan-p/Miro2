@@ -10,11 +10,58 @@
  * Motion itself lives in src/motion/spring.ts, not in CSS transitions.
  */
 
+/* Inter, bundled locally (OFL); no CDN anywhere in the app. */
+@font-face {
+  font-family: "Inter";
+  src: url("../assets/fonts/InterVariable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
-  /* §15 — default to the platform font; Windows already ships optical sizing. */
-  --font-sans: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI",
-    system-ui, sans-serif;
+  /* §15 — one family everywhere; Segoe stays as the Windows fallback. */
+  --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI Variable",
+    "Segoe UI", system-ui, sans-serif;
   --font-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+
+  /* §3/§4 — motion curves live here once, not inline in ten places. */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-cocoa: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-linear: linear;
+
+  /* ── Island tokens ── the notch's own world, per the Dynamic Island spec.
+     Pure black shell, one green, quiet grays; SF Pro / Segoe per spec. */
+  --i-fill: #000000;
+  --i-surface: #1c1c1e;
+  --i-dim: #8e8e93;
+  --i-track: #48484a;
+  --i-accent: #30d158;
+  --i-text: #ffffff;
+  --i-width-collapsed: 160px;
+  --i-height-collapsed: 38px;
+  --i-width-expanded: 400px;
+  --i-height-expanded: 210px;
+  --i-radius-collapsed: 16px;
+  --i-radius-expanded: 30px;
+  --i-pad-x: 16px;
+  --i-ring-size: 18px;
+  --i-ring-stroke: 2px;
+  --i-art-size: 60px;
+  --i-art-radius: 14px;
+  --i-progress-height: 4px;
+  --i-transport-size: 22px;
+  --i-viz-height: 14px;
+  --i-dot-size: 5px;
+  --i-dot-active-width: 18px;
+  --i-pages: 5;
+  --i-row-duration: 260ms;
+  --i-fade-fast: 100ms;
+  --i-stagger: 50ms;
+  --i-page-duration: 300ms;
+  --i-row-gap: 10px;
+  --font-island: "SF Pro Text", "Segoe UI Variable Text", "Segoe UI Variable",
+    "Segoe UI", system-ui, sans-serif;
 }
 
 :root {
@@ -83,6 +130,8 @@
   --paper: 22 24 28;
   --accent: 98 148 48;
   --shade: 22 24 28;
+  /* The dark salmon fails 3:1 on light ink; danger must carry text. */
+  --danger: 190 40 34;
 
   --surface: rgb(var(--ink) / 0.96);
   --surface-raised: rgb(var(--paper) / 0.05);

@@ -2,11 +2,13 @@ import type { PageId } from "../ipc/types";
 
 export const PAGE_IDS: PageId[] = [
   "music",
+  "widgets",
   "usage",
   "focus",
   "water",
   "shelf",
   "todo",
+  "system",
   "settings",
 ];
 
@@ -14,22 +16,26 @@ export const PAGE_IDS: PageId[] = [
 export const PAGE_LABELS: Record<PageId, string> = {
   clock: "Clock",
   music: "Now Playing",
+  widgets: "Widgets",
   usage: "AI Usage",
   focus: "Focus",
   water: "Water",
   shelf: "Shelf",
   todo: "To-do",
+  system: "System",
   settings: "Settings",
 };
 
 export const PAGE_SHORT_LABELS: Record<PageId, string> = {
   clock: "Clock",
   music: "Music",
+  widgets: "Widgets",
   usage: "Usage",
   focus: "Focus",
   water: "Water",
   shelf: "Shelf",
   todo: "To-do",
+  system: "System",
   settings: "Settings",
 };
 

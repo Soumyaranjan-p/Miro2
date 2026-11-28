@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { useModel } from "../app/model";
-import { PAGE_SHORT_LABELS } from "../app/pages";
+import { PAGE_LABELS } from "../app/pages";
 import { springPresets } from "../motion/spring";
 import { useVarSpring } from "../motion/useSpring";
 import type { PageId } from "../ipc/types";
@@ -10,15 +10,19 @@ import {
   MusicIcon,
   SettingsIcon,
   ShelfIcon,
+  SystemIcon,
   TodoIcon,
   UsageIcon,
   WaterIcon,
+  WidgetsIcon,
 } from "../ui/icons";
 
 function PageIcon({ page }: { page: PageId }) {
   switch (page) {
     case "music":
       return <MusicIcon />;
+    case "widgets":
+      return <WidgetsIcon />;
     case "usage":
       return <UsageIcon />;
     case "focus":
@@ -29,6 +33,8 @@ function PageIcon({ page }: { page: PageId }) {
       return <ShelfIcon />;
     case "todo":
       return <TodoIcon />;
+    case "system":
+      return <SystemIcon />;
     case "settings":
       return <SettingsIcon />;
     default:
@@ -117,8 +123,10 @@ export function PageTabs() {
           type="button"
           role="tab"
           data-page={id}
+          data-tip={PAGE_LABELS[id]}
           className="tab"
           aria-selected={page === id}
+          aria-label={PAGE_LABELS[id]}
           tabIndex={page === id ? 0 : -1}
           // §1 — commit on pointer-down: the page is already there before the
           // pointer comes back up.
@@ -126,7 +134,6 @@ export function PageTabs() {
           onClick={() => setPage(id)}
         >
           <PageIcon page={id} />
-          <span>{PAGE_SHORT_LABELS[id]}</span>
         </button>
       ))}
     </div>

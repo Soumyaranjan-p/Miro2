@@ -4,11 +4,15 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { createMockSnapshot, mockUsageSettings } from "./mock";
 import type {
   AppSnapshot,
+  BluetoothState,
   FocusState,
+  MediaAction,
   MediaState,
   NotchState,
+  PowerState,
   Settings,
   ShelfItem,
+  SystemState,
   TodoItem,
   UsageSettings,
   UsageState,
@@ -112,6 +116,31 @@ export function onUsageUpdate(
   );
 }
 
+export function onSystemUpdate(
+  handler: (state: SystemState) => void,
+): Promise<UnlistenFn> {
+  if (!isTauri) return Promise.resolve(() => {});
+  return listen<SystemState>("system:update", (event) =>
+    handler(event.payload),
+  );
+}
+
+export function onPowerUpdate(
+  handler: (state: PowerState) => void,
+): Promise<UnlistenFn> {
+  if (!isTauri) return Promise.resolve(() => {});
+  return listen<PowerState>("power:update", (event) => handler(event.payload));
+}
+
+export function onBluetoothUpdate(
+  handler: (state: BluetoothState) => void,
+): Promise<UnlistenFn> {
+  if (!isTauri) return Promise.resolve(() => {});
+  return listen<BluetoothState>("bluetooth:update", (event) =>
+    handler(event.payload),
+  );
+}
+
 export async function getUsageSettings(): Promise<UsageSettings> {
   if (!isTauri) return mockUsageSettings();
   return invoke<UsageSettings>("usage_settings_get");
@@ -120,4 +149,27 @@ export async function getUsageSettings(): Promise<UsageSettings> {
 export async function setUsageSettings(settings: UsageSettings): Promise<void> {
   if (!isTauri) return;
   await invoke("usage_settings_set", { settings });
+}
+
+/* Preview sources for the System page and transient states live in mock.ts;
+   the Tauri versions arrive as events from the Rust threads. */
+
+export {
+  mockSystemState,
+  mockPowerState,
+  mockBluetoothState,
+  driftSystemState,
+} from "./mock";
+
+/**
+ * Frontend → YouTube. Best-effort: the Rust side commands the live SMTC
+ * session (seek uses guarded arrow keys), and the next `media:update`
+ * reports what actually happened.
+ */
+export async function controlMedia(
+  action: MediaAction | "seek",
+  targetMs?: number,
+): Promise<void> {
+  if (!isTauri) return;
+  await invoke("media_control", { action, targetMs });
 }

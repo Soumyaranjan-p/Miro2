@@ -124,13 +124,15 @@ pub struct AppSnapshot {
     pub todo: Vec<TodoItem>,
 }
 
-const PAGES: [&str; 7] = [
+const PAGES: [&str; 9] = [
     "music",
+    "widgets",
     "usage",
     "focus",
     "water",
     "shelf",
     "todo",
+    "system",
     "settings",
 ];
 
@@ -182,6 +184,43 @@ pub fn default_snapshot(phase: NotchPhase) -> AppSnapshot {
         shelf: Vec::new(),
         todo: Vec::new(),
     }
+}
+
+/// Mirrors `SystemState` in `src/ipc/types.ts`. Instantaneous values; the
+/// frontend smooths the meters.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemState {
+    pub cpu_percent: f32,
+    pub ram_used_bytes: u64,
+    pub ram_total_bytes: u64,
+    pub disk_used_bytes: u64,
+    pub disk_total_bytes: u64,
+}
+
+/// Mirrors `PowerState` in `src/ipc/types.ts`.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PowerState {
+    pub charging: bool,
+    pub battery_percent: Option<u32>,
+}
+
+/// Mirrors `BluetoothDeviceState` in `src/ipc/types.ts`.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct BluetoothDeviceState {
+    pub id: String,
+    pub name: String,
+    pub battery_percent: Option<u32>,
+    pub connected: bool,
+}
+
+/// Mirrors `BluetoothState` in `src/ipc/types.ts`.
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BluetoothState {
+    pub devices: Vec<BluetoothDeviceState>,
 }
 
 /// One measured window of a provider ("Current session", "Today", ...).

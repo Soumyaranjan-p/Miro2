@@ -36,14 +36,21 @@ surface and its foreground; no second hue.
 Never tint secondary text with neutral gray that is unrelated to the
 foreground; derive it from `--paper`.
 
-## Type scale — maximum four sizes
+## Type — Inter, one source of truth
+
+**Inter** is the app's only family, bundled locally as a variable font
+(`src/assets/fonts/InterVariable.woff2`, OFL license ships beside it). No CDN,
+no second family; Segoe UI remains the Windows fallback chain. Sizes, weights,
+leadings, and tracking exist once as `--type-*` tokens in `tokens.css` and are
+consumed only through the `.t-*` classes — no component sets its own font
+values.
 
 | Step | Size | Weight | Leading | Tracking | Use |
 |---|---|---|---|---|---|
 | Display | 19px | 600 | 1.05 | -0.02em | timer, water amount |
-| Title | 15px | 600 | 1.2 | -0.015em | track title, collapsed brand |
+| Title | 15px | 600 | 1.2 | -0.015em | track title, glance percentages |
 | Body | 12px | 450 | 1.35 | 0 | artist, rows, state copy |
-| Label | 10px | 560 | 1.2 | 0.01em | tabs, meta, clock, buttons |
+| Label | 10px | 560 | 1.2 | 0.01em | meta, clock, buttons, captions |
 
 `--type-meta-size` is retired; meta uses the Label step. Optical sizing is on.
 Tabular numerals for every clock, timer, progress, and count.
@@ -67,13 +74,32 @@ the clock gutter is 44px. No ad-hoc pixel gaps.
 
 ## Icons
 
-`lucide-react` only, at 12px in tabs and 14px in content, stroke width 1.8,
+`lucide-react` only, at 13px in tabs and 14px in content, stroke width 1.8,
 round caps, currentColor. No emoji, no Unicode glyph substitutes, no mixed
 hand-drawn sets.
+
+## Navigation — icon-only
+
+The tab rail carries nine pages: Music, Widgets, Usage, Focus, Water, Shelf,
+To-do, System, Settings. Tabs are icons only — the page name lives in the
+accessible name and a tooltip that appears on hover (delayed 400 ms so a
+sweep across the rail does not strobe) and instantly on keyboard focus. Tab
+hit areas are 44px wide and fill the 22px rail; the notch's fixed 420×150
+window caps the vertical hit area at the rail height. Hover styling sits
+behind `@media (hover: hover)`.
+
+## Transient states — overlays, never sections
+
+Charging and Bluetooth headphones connect/disconnect play a short card inside
+the notch and dismiss themselves (2.6-3 s). The layer is pointer-events: none,
+enters from the top edge and exits along the same path with a faster exit, and
+condenses to a single line when the notch is collapsed. They never appear in
+navigation.
 
 ## States and scope
 
 Collapsed (152×30), hover (152×30 with a lit rim), expanded (420×150) in dark
-and light. Pages: Music, Lyrics, Focus, Water, Shelf, To-do, Settings.
-Window geometry and Rust code are out of scope. The name stays **Miro**; no
-Nusa text, icons, or assets.
+and light. Pages: Music (with split Lyrics), Widgets, AI Usage, Focus, Water,
+Shelf, To-do, System, Settings. Window geometry is fixed; Rust changes exist
+only to feed the UI (system stats, power, Bluetooth, SMTC seek). The name
+stays **Miro**; no Nusa text, icons, or assets.

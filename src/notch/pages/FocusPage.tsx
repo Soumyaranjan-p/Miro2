@@ -3,6 +3,7 @@ import { useModel } from "../../app/model";
 import type { FocusState } from "../../ipc/types";
 import { IconButton } from "../controls/IconButton";
 import { CheckIcon, PauseIcon, PlayIcon } from "../../ui/icons";
+import type { CSSProperties } from "react";
 
 const KIND_LABEL: Record<FocusState["kind"], string> = {
   focus: "Deep work",
@@ -77,7 +78,7 @@ export function FocusPage() {
       >
         <div
           className="focus-bar"
-          style={{ width: `${(progress * 100).toFixed(1)}%` }}
+          style={{ "--focus-p": progress.toFixed(4) } as CSSProperties}
         />
       </div>
 

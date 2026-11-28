@@ -20,9 +20,11 @@ import { FocusPage } from "./pages/FocusPage";
 import { MusicPage } from "./pages/MusicPage";
 import { ShelfPage } from "./pages/ShelfPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { SystemPage } from "./pages/SystemPage";
 import { TodoPage } from "./pages/TodoPage";
 import { UsagePage } from "./pages/UsagePage";
 import { WaterPage } from "./pages/WaterPage";
+import { WidgetsPage } from "./pages/WidgetsPage";
 
 /** §10 — a gesture only commits to a direction past a small threshold. */
 const DRAG_THRESHOLD_PX = 10;
@@ -31,6 +33,8 @@ function PageView({ page }: { page: PageId }) {
   switch (page) {
     case "music":
       return <MusicPage />;
+    case "widgets":
+      return <WidgetsPage />;
     case "usage":
       return <UsagePage />;
     case "focus":
@@ -41,6 +45,8 @@ function PageView({ page }: { page: PageId }) {
       return <ShelfPage />;
     case "todo":
       return <TodoPage />;
+    case "system":
+      return <SystemPage />;
     case "settings":
       return <SettingsPage />;
     default:

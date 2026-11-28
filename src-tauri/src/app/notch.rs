@@ -16,10 +16,10 @@ use super::monitor::top_center_rect;
 use crate::ipc::types::NotchState;
 
 const WINDOW_LABEL: &str = "notch";
-const COLLAPSED_WIDTH: f64 = 152.0;
-const COLLAPSED_HEIGHT: f64 = 30.0;
-const EXPANDED_WIDTH: f64 = 420.0;
-const EXPANDED_HEIGHT: f64 = 150.0;
+const COLLAPSED_WIDTH: f64 = 160.0;
+const COLLAPSED_HEIGHT: f64 = 38.0;
+const EXPANDED_WIDTH: f64 = 400.0;
+const EXPANDED_HEIGHT: f64 = 210.0;
 const TICK_MS: u64 = 60;
 const SLOW_TICK_EVERY: u32 = 8;
 const HOVER_PADDING: i32 = 8;
