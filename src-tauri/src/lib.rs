@@ -13,14 +13,12 @@ pub fn run() {
             ipc::commands::notch_state,
             ipc::commands::app_snapshot,
             ipc::commands::usage_settings_get,
-            ipc::commands::usage_settings_set,
-            ipc::commands::dock_report_layout
+            ipc::commands::usage_settings_set
         ])
         .setup(|app| {
             app::notch::spawn(app.handle().clone());
             media::spawn(app.handle().clone());
             usage::spawn(app.handle().clone());
-            usage::spawn_cursor(app.handle().clone());
             Ok(())
         })
         .run(tauri::generate_context!())

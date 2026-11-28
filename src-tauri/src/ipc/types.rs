@@ -126,7 +126,7 @@ pub struct AppSnapshot {
 
 const PAGES: [&str; 7] = [
     "music",
-    "lyrics",
+    "usage",
     "focus",
     "water",
     "shelf",
@@ -241,15 +241,12 @@ impl Default for ProviderSetting {
 #[serde(rename_all = "camelCase", default)]
 pub struct UsageSettings {
     pub providers: HashMap<String, ProviderSetting>,
-    /// "right" or "left" screen edge.
-    pub dock_side: String,
 }
 
 impl Default for UsageSettings {
     fn default() -> Self {
         Self {
             providers: HashMap::new(),
-            dock_side: String::from("right"),
         }
     }
 }

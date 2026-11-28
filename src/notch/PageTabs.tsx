@@ -7,11 +7,11 @@ import { useVarSpring } from "../motion/useSpring";
 import type { PageId } from "../ipc/types";
 import {
   FocusIcon,
-  LyricsIcon,
   MusicIcon,
-  ShelfIcon,
   SettingsIcon,
+  ShelfIcon,
   TodoIcon,
+  UsageIcon,
   WaterIcon,
 } from "../ui/icons";
 
@@ -19,8 +19,8 @@ function PageIcon({ page }: { page: PageId }) {
   switch (page) {
     case "music":
       return <MusicIcon />;
-    case "lyrics":
-      return <LyricsIcon />;
+    case "usage":
+      return <UsageIcon />;
     case "focus":
       return <FocusIcon />;
     case "water":

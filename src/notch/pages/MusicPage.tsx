@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -9,9 +10,13 @@ import { useModel } from "../../app/model";
 import { Artwork } from "../controls/Artwork";
 import { IconButton } from "../controls/IconButton";
 import { Scrubber } from "../controls/Scrubber";
-import { PauseIcon, PlayIcon } from "../../ui/icons";
+import { LyricsIcon, PauseIcon, PlayIcon } from "../../ui/icons";
 import { EmptyState } from "./EmptyState";
+import { LyricsPage } from "./LyricsPage";
 
+type MusicView = "player" | "lyrics";
+
+const VIEW_KEY = "miro.musicView";
 const MARQUEE_GAP = 24; // --space-6
 const MARQUEE_SPEED = 14; // px/s — readable, and quiet enough to ignore.
 
@@ -83,13 +88,32 @@ function MarqueeTitle({ text }: { text: string }) {
   );
 }
 
+/** §16 agency — the last view the user chose is the view they come back to. */
+function readView(): MusicView {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "lyrics" ? "lyrics" : "player";
+  } catch {
+    return "player";
+  }
+}
+
 /**
- * §16 feedback — the page exposes ongoing status: playing lives on the
- * artwork badge, paused dims the tile, live replaces the timeline.
+ * Music is two stacked views now — player and lyrics — toggled by the lyrics
+ * button next to the transport. Lyrics moved in from its old tab; the tab
+ * list no longer carries it. The switch is a 200ms cross-fade, nothing more.
  */
 export function MusicPage() {
   const { snapshot, togglePlay, seek } = useModel();
   const media = snapshot.media;
+  const [view, setView] = useState<MusicView>(readView);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_KEY, view);
+    } catch {
+      // Private mode: the choice just does not survive a restart.
+    }
+  }, [view]);
 
   if (!media) {
     return (
@@ -101,57 +125,74 @@ export function MusicPage() {
   }
 
   const live = media.durationMs <= 0;
+  const showLyrics = view === "lyrics";
 
   return (
     <div
       className="page music-page"
       data-playing={media.playing ? "true" : "false"}
+      data-view={view}
     >
-      <div className="music-top">
-        <Artwork
-          title={media.title}
-          artist={media.artist}
-          url={media.artworkUrl}
-          playing={media.playing}
-        />
+      <div className="music-views">
+        <div className="music-view" data-view="player">
+          <div className="music-top">
+            <Artwork
+              title={media.title}
+              artist={media.artist}
+              url={media.artworkUrl}
+              playing={media.playing}
+            />
 
-        <div className="music-meta">
-          <MarqueeTitle text={media.title} />
-          <p className="t-body music-artist">{media.artist}</p>
+            <div className="music-meta">
+              <MarqueeTitle text={media.title} />
+              <p className="t-body music-artist">{media.artist}</p>
+            </div>
+
+            <div className="music-controls">
+              <IconButton
+                label={showLyrics ? "Show player only" : "Split lyrics"}
+                aria-pressed={showLyrics}
+                onClick={() => setView(showLyrics ? "player" : "lyrics")}
+              >
+                <LyricsIcon />
+              </IconButton>
+              <IconButton
+                label={media.playing ? "Pause" : "Play"}
+                primary
+                onClick={togglePlay}
+              >
+                <span
+                  className="play-glyphs"
+                  data-playing={media.playing ? "true" : "false"}
+                  aria-hidden="true"
+                >
+                  <PlayIcon className="play-glyph play-glyph-play" />
+                  <PauseIcon className="play-glyph play-glyph-pause" />
+                </span>
+              </IconButton>
+            </div>
+          </div>
+
+          {live ? (
+            <div className="music-live" role="status" aria-label="Live stream">
+              <span className="live-pill t-label">
+                <span className="live-dot" aria-hidden="true" />
+                Live
+              </span>
+            </div>
+          ) : (
+            <Scrubber
+              positionMs={media.positionMs}
+              durationMs={media.durationMs}
+              onSeek={seek}
+            />
+          )}
         </div>
 
-        <div className="music-controls">
-          <IconButton
-            label={media.playing ? "Pause" : "Play"}
-            primary
-            onClick={togglePlay}
-          >
-            <span
-              className="play-glyphs"
-              data-playing={media.playing ? "true" : "false"}
-              aria-hidden="true"
-            >
-              <PlayIcon className="play-glyph play-glyph-play" />
-              <PauseIcon className="play-glyph play-glyph-pause" />
-            </span>
-          </IconButton>
+        <div className="music-view" data-view="lyrics">
+          <LyricsPage />
         </div>
       </div>
-
-      {live ? (
-        <div className="music-live" role="status" aria-label="Live stream">
-          <span className="live-pill t-label">
-            <span className="live-dot" aria-hidden="true" />
-            Live
-          </span>
-        </div>
-      ) : (
-        <Scrubber
-          positionMs={media.positionMs}
-          durationMs={media.durationMs}
-          onSeek={seek}
-        />
-      )}
     </div>
   );
 }

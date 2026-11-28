@@ -1,8 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useModel } from "../../app/model";
+import {
+  getUsageSettings,
+  isTauri,
+  setUsageSettings,
+} from "../../ipc/client";
+import { mockUsageSettings } from "../../ipc/mock";
+import type { UsageSettings } from "../../ipc/types";
 
 type ThemeChoice = "dark" | "light" | "system";
+
+const USAGE_PROVIDERS: Array<{ id: string; name: string }> = [
+  { id: "zcode", name: "Zcode" },
+  { id: "opencode", name: "OpenCode" },
+  { id: "claude", name: "Claude Code" },
+  { id: "codex", name: "Codex" },
+];
 
 function Switch({
   label,
@@ -40,6 +54,31 @@ export function SettingsPage() {
   const [hideOnFullscreen, setHideOnFullscreen] = useState(
     snapshot.settings.hideOnFullscreen,
   );
+  const [usage, setUsage] = useState<UsageSettings>({ providers: {} });
+
+  useEffect(() => {
+    let cancelled = false;
+    void (isTauri ? getUsageSettings() : Promise.resolve(mockUsageSettings())).then(
+      (loaded) => {
+        if (!cancelled) setUsage(loaded);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleProvider = (id: string) => {
+    const current = usage.providers[id] ?? { enabled: true, limitOverride: null };
+    const next: UsageSettings = {
+      providers: {
+        ...usage.providers,
+        [id]: { ...current, enabled: !current.enabled },
+      },
+    };
+    setUsage(next);
+    void setUsageSettings(next);
+  };
 
   const chooseTheme = (next: ThemeChoice) => {
     setTheme(next);
@@ -98,6 +137,26 @@ export function SettingsPage() {
             checked={showClockDate}
             onChange={() => setShowClockDate((value) => !value)}
           />
+        </div>
+        <div className="settings-row">
+          <span className="t-body">AI usage</span>
+          <div className="usage-toggles">
+            {USAGE_PROVIDERS.map(({ id, name }) => {
+              const enabled = (usage.providers[id] ?? { enabled: true }).enabled;
+              return (
+                <span key={id} className="usage-toggle" title={`${name} usage`}>
+                  <Switch
+                    label={`${name} usage`}
+                    checked={enabled}
+                    onChange={() => toggleProvider(id)}
+                  />
+                  <span className="t-meta usage-toggle-mark" aria-hidden="true">
+                    {name.charAt(0)}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

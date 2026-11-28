@@ -5,7 +5,6 @@ import { createMockSnapshot, mockUsageSettings } from "./mock";
 import type {
   AppSnapshot,
   FocusState,
-  InteractiveRect,
   MediaState,
   NotchState,
   Settings,
@@ -121,9 +120,4 @@ export async function getUsageSettings(): Promise<UsageSettings> {
 export async function setUsageSettings(settings: UsageSettings): Promise<void> {
   if (!isTauri) return;
   await invoke("usage_settings_set", { settings });
-}
-
-export async function reportDockLayout(rects: InteractiveRect[]): Promise<void> {
-  if (!isTauri) return;
-  await invoke("dock_report_layout", { rects });
 }

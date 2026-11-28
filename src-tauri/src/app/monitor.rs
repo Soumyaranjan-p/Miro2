@@ -12,42 +12,6 @@ pub fn top_center_rect(
     (centered.max(monitor_x), monitor_y, width, height)
 }
 
-/// A full-height strip hugging the monitor's left or right edge. The width is
-/// scaled; the height is the monitor's physical height, so the dock always
-/// spans the whole screen regardless of DPI.
-pub fn edge_strip_rect(
-    monitor_x: i32,
-    monitor_y: i32,
-    monitor_width: u32,
-    monitor_height: u32,
-    scale: f64,
-    logical_width: f64,
-    side: Edge,
-) -> (i32, i32, u32, u32) {
-    let width = (logical_width * scale).round().max(1.0) as u32;
-    let x = match side {
-        Edge::Right => monitor_x + monitor_width as i32 - width as i32,
-        Edge::Left => monitor_x,
-    };
-    (x, monitor_y, width, monitor_height.max(1))
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Edge {
-    Left,
-    Right,
-}
-
-impl Edge {
-    pub fn parse(value: &str) -> Self {
-        if value.eq_ignore_ascii_case("left") {
-            Edge::Left
-        } else {
-            Edge::Right
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::top_center_rect;

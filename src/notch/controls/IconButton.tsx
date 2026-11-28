@@ -3,8 +3,10 @@ import type { ReactNode } from "react";
 interface IconButtonProps {
   label: string;
   primary?: boolean;
-  /** quiet = dark-gray well (prototype pause); accent = the one bright key. */
+  /** quiet = dark-gray well (focus pause); accent = the one bright key. */
   tone?: "quiet" | "accent";
+  /** Toggle buttons (the lyrics switch) reflect their state. */
+  "aria-pressed"?: boolean;
   onClick?: () => void;
   children: ReactNode;
 }
@@ -12,7 +14,14 @@ interface IconButtonProps {
 /**
  * §1 — feedback is CSS :active, so it lands on pointer-down with no JS delay.
  */
-export function IconButton({ label, primary, tone, onClick, children }: IconButtonProps) {
+export function IconButton({
+  label,
+  primary,
+  tone,
+  onClick,
+  children,
+  ...rest
+}: IconButtonProps) {
   return (
     <button
       type="button"
@@ -21,6 +30,7 @@ export function IconButton({ label, primary, tone, onClick, children }: IconButt
       data-tone={tone}
       aria-label={label}
       onClick={onClick}
+      {...rest}
     >
       {children}
     </button>

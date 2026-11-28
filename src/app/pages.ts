@@ -2,7 +2,7 @@ import type { PageId } from "../ipc/types";
 
 export const PAGE_IDS: PageId[] = [
   "music",
-  "lyrics",
+  "usage",
   "focus",
   "water",
   "shelf",
@@ -14,7 +14,7 @@ export const PAGE_IDS: PageId[] = [
 export const PAGE_LABELS: Record<PageId, string> = {
   clock: "Clock",
   music: "Now Playing",
-  lyrics: "Lyrics",
+  usage: "AI Usage",
   focus: "Focus",
   water: "Water",
   shelf: "Shelf",
@@ -25,7 +25,7 @@ export const PAGE_LABELS: Record<PageId, string> = {
 export const PAGE_SHORT_LABELS: Record<PageId, string> = {
   clock: "Clock",
   music: "Music",
-  lyrics: "Lyrics",
+  usage: "Usage",
   focus: "Focus",
   water: "Water",
   shelf: "Shelf",

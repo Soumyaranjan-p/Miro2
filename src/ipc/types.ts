@@ -1,7 +1,7 @@
 export type PageId =
   | "clock"
   | "music"
-  | "lyrics"
+  | "usage"
   | "focus"
   | "water"
   | "shelf"
@@ -107,8 +107,6 @@ export interface TodoItem {
 export type MediaAction = "toggle" | "next" | "prev";
 export type ShelfAction = "open" | "reveal" | "remove";
 
-export type DockSide = "left" | "right";
-
 export interface UsageWindow {
   label: string;
   used: number;
@@ -122,7 +120,7 @@ export interface ProviderUsage {
   id: string;
   /** The tool's local data exists on this machine. */
   present: boolean;
-  /** The user enabled it in the dock settings. */
+  /** The user enabled it in Settings. */
   enabled: boolean;
   windows: UsageWindow[];
 }
@@ -138,13 +136,4 @@ export interface ProviderSetting {
 
 export interface UsageSettings {
   providers: Record<string, ProviderSetting>;
-  dockSide: DockSide;
-}
-
-/** Interactive areas of the dock window, logical px, window-relative. */
-export interface InteractiveRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
 }

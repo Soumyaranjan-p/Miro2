@@ -134,7 +134,6 @@ impl Provider for Claude {
             .unwrap_or((0, 0));
 
         AdapterOutput {
-            present: true,
             windows: vec![
                 WindowSample {
                     label: String::from("Current session"),

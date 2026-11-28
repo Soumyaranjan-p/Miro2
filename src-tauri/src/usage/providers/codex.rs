@@ -84,7 +84,6 @@ impl Provider for Codex {
         }
 
         AdapterOutput {
-            present: true,
             windows,
             past_maxima,
         }

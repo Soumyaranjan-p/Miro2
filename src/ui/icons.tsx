@@ -5,6 +5,7 @@ import {
   FileText,
   Folder,
   FolderOpen,
+  Gauge,
   ListTodo,
   Music2,
   Pause,
@@ -29,6 +30,7 @@ function miroIcon(Icon: LucideIcon) {
 
 export const MusicIcon = miroIcon(Music2);
 export const LyricsIcon = miroIcon(AlignLeft);
+export const UsageIcon = miroIcon(Gauge);
 export const FocusIcon = miroIcon(Timer);
 export const WaterIcon = miroIcon(Droplet);
 export const ShelfIcon = miroIcon(FolderOpen);

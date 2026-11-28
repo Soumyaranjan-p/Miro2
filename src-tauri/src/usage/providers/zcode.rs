@@ -32,7 +32,6 @@ impl Provider for Zcode {
         };
         let Some(entries) = read_entries(&path) else {
             return AdapterOutput {
-                present: true,
                 windows: Vec::new(),
                 past_maxima: Vec::new(),
             };
@@ -40,7 +39,6 @@ impl Provider for Zcode {
 
         let (windows, past_maxima) = calendar_windows(&entries);
         AdapterOutput {
-            present: true,
             windows,
             past_maxima,
         }

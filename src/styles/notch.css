@@ -243,6 +243,93 @@
   gap: var(--space-2);
 }
 
+/* Player and lyrics share the row: player full width normally, splitting
+   50/50 when lyrics are open — like Apple Music's expanded mini player.
+   §16 — the switch is a 200ms width/opacity ease, nothing more. */
+.music-views {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.music-view {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  transition:
+    opacity 200ms ease,
+    flex-basis 200ms ease;
+}
+
+.music-view[data-view="player"] {
+  flex: 1 1 100%;
+  opacity: 1;
+}
+
+.music-view[data-view="lyrics"] {
+  flex: 0 0 0%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.music-page[data-view="lyrics"] .music-view[data-view="player"] {
+  flex-basis: 50%;
+}
+
+.music-page[data-view="lyrics"] .music-view[data-view="lyrics"] {
+  flex: 1 1 50%;
+  opacity: 1;
+  pointer-events: auto;
+  border-left: 1px solid var(--hairline);
+  padding-left: var(--space-2);
+}
+
+/* Split mode: the player reflows compactly — artwork row, scrubber row,
+   transport row — inside its half. */
+.music-page[data-view="lyrics"] .music-view[data-view="player"] {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-content: center;
+  row-gap: var(--space-2);
+}
+
+.music-page[data-view="lyrics"] .music-top {
+  display: contents;
+}
+
+.music-page[data-view="lyrics"] .music-top .artwork {
+  width: 40px;
+  height: 40px;
+}
+
+.music-page[data-view="lyrics"] .music-controls {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  justify-content: flex-start;
+}
+
+.music-page[data-view="lyrics"] .scrubber,
+.music-page[data-view="lyrics"] .music-live {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+/* §16 — the lyrics switch reads as engaged while the lyrics view shows. */
+.icon-button[aria-pressed="true"] {
+  color: var(--text-primary);
+  background: rgb(var(--paper) / 0.1);
+}
+
+.icon-button[aria-pressed="true"]:hover {
+  background: rgb(var(--paper) / 0.14);
+}
+
 .music-top {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) auto;
@@ -1040,7 +1127,146 @@
   color: var(--text-tertiary);
 }
 
-/* --------------------------------------------------------------- tabs */
+/* -------------------------------------------------------------- usage */
+
+/* One compact card per detected provider: ring left, name + window bars
+   right. Two providers fill the page; more scroll (§16 simplicity). */
+.usage-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  overflow-y: auto;
+}
+
+.usage-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+/* Provider hues — orange Claude, green Codex, yellow the others. */
+.usage-card[data-provider="claude"] {
+  --ring-color: #e08a3c;
+}
+.usage-card[data-provider="codex"] {
+  --ring-color: #3ecf6e;
+}
+.usage-card[data-provider="zcode"],
+.usage-card[data-provider="opencode"],
+.usage-card[data-provider="devin"] {
+  --ring-color: #d9b13b;
+}
+
+.usage-card-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+
+.usage-card-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.usage-ring-track {
+  fill: none;
+  stroke: rgb(var(--paper) / 0.14);
+  stroke-width: 2.5;
+}
+
+.usage-ring-fill {
+  fill: none;
+  stroke: var(--ring-color, #d9b13b);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 400ms ease;
+}
+
+.usage-card-ring[data-critical="true"] .usage-ring-fill {
+  stroke: rgb(var(--danger));
+}
+
+.usage-ring-mark {
+  font-size: 9px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.usage-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.usage-card-name {
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.usage-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 12px;
+}
+
+.usage-row-label {
+  flex: none;
+  width: 56px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.usage-row-bar {
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: rgb(var(--paper) / 0.12);
+  overflow: hidden;
+}
+
+.usage-row-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ring-color, #d9b13b);
+  transition: width 400ms ease;
+}
+
+.usage-row-fill[data-critical="true"] {
+  background: rgb(var(--danger));
+}
+
+.usage-row-pct {
+  flex: none;
+  width: 30px;
+  text-align: right;
+  color: var(--text-primary);
+}
+
+.usage-row-reset {
+  flex: none;
+  width: 74px;
+  text-align: right;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* -------------------------------------------------------------- tabs */
 
 /* No padding here on purpose: the indicator's left:0 must share a coordinate
    space with button.offsetLeft, which the measurement uses. */
@@ -1218,6 +1444,22 @@
   background: var(--ink);
 }
 
+.usage-toggles {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.usage-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.usage-toggle-mark {
+  color: var(--text-tertiary);
+}
+
 /* ------------------------------------------------------------- states */
 
 .empty {
@@ -1251,7 +1493,10 @@
   .bottle-fill,
   .focus-bar,
   .scrubber-thumb,
-  .scrubber-rail {
+  .scrubber-rail,
+  .usage-ring-fill,
+  .usage-row-fill,
+  .music-view {
     transition-duration: 0.01ms;
   }
 

@@ -24,7 +24,6 @@ pub struct WindowSample {
 
 #[derive(Clone, Debug, Default)]
 pub struct AdapterOutput {
-    pub present: bool,
     pub windows: Vec<WindowSample>,
     /// Same length as `windows`: the highest past-window total, used as the
     /// default limit when the user has not set an override.

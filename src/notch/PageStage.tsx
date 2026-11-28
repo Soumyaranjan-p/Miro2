@@ -17,11 +17,11 @@ import {
 } from "../motion/spring";
 import type { PageId } from "../ipc/types";
 import { FocusPage } from "./pages/FocusPage";
-import { LyricsPage } from "./pages/LyricsPage";
 import { MusicPage } from "./pages/MusicPage";
 import { ShelfPage } from "./pages/ShelfPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { TodoPage } from "./pages/TodoPage";
+import { UsagePage } from "./pages/UsagePage";
 import { WaterPage } from "./pages/WaterPage";
 
 /** §10 — a gesture only commits to a direction past a small threshold. */
@@ -31,8 +31,8 @@ function PageView({ page }: { page: PageId }) {
   switch (page) {
     case "music":
       return <MusicPage />;
-    case "lyrics":
-      return <LyricsPage />;
+    case "usage":
+      return <UsagePage />;
     case "focus":
       return <FocusPage />;
     case "water":

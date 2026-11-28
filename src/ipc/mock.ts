@@ -69,7 +69,6 @@ export function mockUsageState(): UsageState {
 export function mockUsageSettings(): UsageSettings {
   return {
     providers: {},
-    dockSide: "right",
   };
 }
 
@@ -81,7 +80,7 @@ export function createMockSnapshot(): AppSnapshot {
       page: "music",
       pagesOrder: [
         "music",
-        "lyrics",
+        "usage",
         "focus",
         "water",
         "shelf",
